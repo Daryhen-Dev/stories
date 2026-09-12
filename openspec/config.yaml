@@ -41,8 +41,8 @@ sdd:
   strict_tdd: true
 
 tdd:
-  runner: vitest # planned; will be installed with the first work package
-  e2e_runner: playwright # planned
+  runner: vitest # installed at the workspace root (see openspec/changes/sdd-monorepo-bootstrap/verify.md)
+  e2e_runner: playwright # installed as config-only placeholder; browsers/specs deferred to the stories change
   coverage_gate: none # no baseline exists in an empty repository
   evidence: >-
     Strict TDD (RED, GREEN, TRIANGULATE, REFACTOR) applies from the first

@@ -1,2 +1,21 @@
 # Local Pi runtime state
 .atl/
+
+# Dependencies and build output
+node_modules/
+dist/
+
+# Environment and secrets
+.env
+.env.*
+
+# Local SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Test and coverage artifacts
+coverage/
+.vitest/
+playwright-report/
+test-results/

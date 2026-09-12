@@ -1,0 +1,9 @@
+pnpm-lock.yaml
+dist/
+coverage/
+.vitest/
+playwright-report/
+test-results/
+openspec/
+.atl/
+.pi/
