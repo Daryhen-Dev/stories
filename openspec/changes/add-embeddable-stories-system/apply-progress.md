@@ -761,3 +761,42 @@ rewritten or lost.
   and 138 added/8 removed OpenSpec lines. This is within the approved ≤1,500
   PR 8 budget; no code, tests, comments, docs, or evidence were removed to
   affect review size.
+
+## Run 9 — PR 9 `@stories/local-api` project management + two-context connection test
+
+- Status consumed: parent-authoritative `add-embeddable-stories-system`, `applyState: ready`, `repo-local` workspace `/home/daryhen/Documents/proyects/stories`, allowed root confirmed; delivery `auto-chain` + `stacked-to-main`, PR 9 only, approved ≤1,500 changed lines. Warnings: none.
+- Runtime: authenticated to the parent-held active attempt with request id `pr09-project-management-kiro-child`; active token matched; no settlement, branch, staging, commit, push, PR, native review, dependency install, or `.codegraph/` mutation occurred.
+- Strict TDD: active (Vitest). Safety net before edits: core **74/74** and local-api **10/10** passed. Skill resolution: `paths-injected` (`typescript`, `zod-4`).
+
+### Completed tasks (persisted in `tasks.md`)
+
+- [x] RED — core project-service tests failed on absent `./project-service.js`; eight HTTP scenarios failed with route `404`s while existing local-api tests remained green.
+- [x] GREEN — local SQLite CRUD with UUIDs/redacted DTOs, project-aware adapter construction, Node probe persistence, browser-pending state, browser result storage, and typed project endpoint errors; core **78/78**, local-api **18/18**.
+- [x] TRIANGULATE — deliberate `credentialsJson` DTO mis-map redacted; repeated Node check overwrites prior result; auth/network/bucket/public-read diagnoses precede CORS; failed range yields `video-seeking`; provider remediation covers Supabase and InsForge.
+- [x] REFACTOR — shared Zod 4 request parsers live in core; route modules consume only project/core and `@stories/storage-adapters` contract types, never provider SDK types.
+- [x] Verify & bounds — core **78/78**, local-api **20/20**, root typecheck/lint/diff check green; five PR 9 task rows visibly `[x]`.
+
+### TDD Cycle Evidence
+
+| Task | Test files | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| PR 9 project service + HTTP checks | `project-service.test.ts`, `projects.test.ts`, `cors-diagnosis.test.ts` | SQLite unit + Fastify integration + pure unit | 74/74 core; 10/10 API | Missing service; 8 route 404s | 78/78 core; 18/18 API | 20/20 API | Shared parsers/contract imports; all green |
+
+### Files changed
+
+- `packages/core/src/domain/project-service.{ts,test.ts}` and `src/index.ts` — project persistence, secret-free DTOs, JSON-safe check storage, shared request parsing.
+- `packages/local-api/src/server.{ts,test.ts}`, `src/routes/{projects,connection-test,cors-check}.ts`, and `src/domain/cors-diagnosis.{ts,test.ts}` — CRUD and two-context checks without weakening PR 8 loopback/redaction controls.
+- `packages/local-api/test/projects.test.ts` — CRUD, GET-secret scan, typed errors, result overwrite/persistence, CORS/range behavior.
+- `openspec/changes/add-embeddable-stories-system/{tasks.md,verify.md,apply-progress.md}` — PR 9 task and evidence updates only.
+
+### Commands and results
+
+- `pnpm --filter @stories/core test` — PASS, 10 files / **78 tests**.
+- `pnpm --filter @stories/local-api test` — PASS, 3 files / **20 tests**.
+- `pnpm typecheck` — PASS; `pnpm lint` — PASS; `git diff --check` — PASS.
+
+### Deviations, remaining tasks, and boundary
+
+- No design deviation. Zod 4 disallows `.omit()` after an object refinement, so equivalent shared request schemas are explicit and tested; remediation language is sourced from Spike B's documented gateway/S3-compatibility limits.
+- Next unchecked PR 10 rows remain exactly: `- [ ] **RED** Write \`packages/local-api/test/stories.test.ts\`...`;`- [ ] **GREEN** Implement \`src/routes/stories.ts\`...`;`- [ ] **TRIANGULATE** Video with \`durationSeconds\` field...`;`- [ ] **REFACTOR** Extract the field-first validation guard...`;`- [ ] **Verify & bounds** Suites green...` (all remain visibly unchecked in `tasks.md`; PR 11+ untouched).
+- PR boundary: PR 9 only. Code-facing diff is **+1,379/−6 = 1,385** lines before OpenSpec evidence; final candidate remains within the approved 1,500-line PR budget. No size exception is needed.
