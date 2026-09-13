@@ -233,3 +233,83 @@ fixes them.
   amendment bullet that was already uncommitted on this branch).
 - Authored footprint ≈ **500 lines** — inside the amended ≤800 per-PR budget.
   No split needed; nothing deleted or compressed to fit.
+
+## PR 5 — `@stories/core`: story domain service (draft evidence, apply phase)
+
+- Branch: `sdd/pr05-core-story-domain` (stacked on PR 4, commit `4f4ebef`).
+  Store: `openspec`. Strict TDD: active (Vitest, `pnpm --filter @stories/core test`).
+- Scope consumed: exactly the 5 `### PR 5` checkboxes; PRs 1–4 untouched; PR 6+
+  out of scope. Budget: operator amendment ≤800 changed lines per PR
+  (`tasks.md` Conventions); runtime attempt cap 700; measured early (Bounds).
+- Final state: core suite **48/48** (12 PR 4 tests intact + 36 new) · workspace
+  `pnpm test` **98 passed + 1 skipped** (PRs 1–3 suites unchanged) · root
+  `pnpm typecheck` clean · `pnpm lint` clean.
+
+### TDD cycle evidence
+
+| Phase | Command | Result |
+| --- | --- | --- |
+| RED | `pnpm --filter @stories/core test` | FAIL (exit 1) — exactly the 3 new files fail: `Cannot find module './expiry-window.js'` / `'./ordering.js'` / `'./story-service.js'`; PR 4's 12 tests still green (3 failed / 3 passed files, 12 passed) |
+| GREEN | `pnpm --filter @stories/core test` | PASS (exit 0) — 45/45 in 6 files after implementing `expiry-window.ts`, `ordering.ts`, `story-service.ts` + index exports; one real defect surfaced and fixed: better-sqlite3 is a sync driver, so `db.transaction(async (tx) => …)` throws `Transaction function cannot return a promise` — removeStory now runs the transaction body synchronously via `.get()`/`.run()` |
+| TRIANGULATE | `pnpm --filter @stories/core test` | PASS (exit 0) — 47/47: no-poster removal records only the media key (`posterKey` null); forced pending-deletion insert failure (DROP TABLE) rolls the story delete back, leaving the row intact |
+| REFACTOR | `pnpm --filter @stories/core test` | PASS (exit 0) — 48/48: parity pin `enforces the identical window boundaries on create and edit (single shared refinement)` — 8 boundary offsets × both paths; passed immediately, proving create/edit compose the one `expiryWindowSchema` definition (pin of already-correct GREEN behavior, PR 3 precedent); `accepts()` helper extracted per REFACTOR hygiene |
+| Verify & bounds | `pnpm test` · `pnpm typecheck` · `pnpm lint` | PASS — 98 passed + 1 skipped workspace; tsc clean; ESLint clean |
+
+### Scenario traceability (SL R3 / R5 / R7; SL R4 stale-column note)
+
+| Spec scenario | Test |
+| --- | --- |
+| R3 — exactly 24 h accepted (boundary) | `accepts an expiry exactly 24 hours in the future (inclusive boundary)` + service-level `accepts exactly 24 hours and exactly 30 days (SL R3 boundaries)` |
+| R3 — exactly 30 d accepted (boundary) | `accepts an expiry exactly 30 days in the future (inclusive boundary)` (same service-level test) |
+| R3 — 12 h rejected | `rejects a 12-hour expiry as too short` (+ 1 ms granularity `rejects instants one millisecond outside both bounds`) + `createStory rejects a 12-hour expiry… inserts nothing` + `updateStory rejects a too-short expiry patch… unchanged` |
+| R3 — 45 d rejected | `rejects a 45-day expiry as too long` + service create/update equivalents |
+| R3 — non-UTC input rejected | `rejects a non-UTC offset form (+02:00)` + `rejects a naive timestamp without the Z suffix` (shape reuses `isoUtc` from manifest-schema, D3) |
+| R3 — window error is a Zod validation error | service tests assert `rejects.toBeInstanceOf(ZodError)` on create and edit |
+| R5 — same position → newest first | `orders same-position stories newest first` + comparator unit `breaks position ties newest-first (createdAt desc)` |
+| R5 — position overrides chronology | `orders by position ascending regardless of chronology` + `orders lower positions first regardless of creation order` |
+| R5 — full mixed order | `sorts a mixed set: position asc, createdAt desc within equal positions` + comparator `sorts a mixed list…` (+ `returns 0 for identical position and createdAt`) |
+| R7 — removal deletes row + pending-deletion with media+poster keys in the SAME transaction | `deletes the story and records media+poster keys in the same transaction` |
+| R7 — no poster → media key only | `records only the media key when the story has no poster (triangulation)` |
+| R7 — insert failure rolls the delete back | `rolls the removal back when the pending-deletion insert fails, leaving the story intact (triangulation)` |
+| SL R4 stale-column note | Stays with PR 6: generation runs `expireStories` first; this PR's `listStories` is a local-truth read, not a correctness path for the manifest. |
+
+### Notes and deviations
+
+- **`zod` added to `@stories/core` dependencies (`^4.6.2`, +3 lockfile lines).**
+  SL R3 mandates a Zod refinement and the service input schemas compose it;
+  `zod` is not a new dependency to the repository (manifest-schema pins the same
+  version). The window's UTC shape reuses `isoUtc` from `@stories/manifest-schema`
+  (D3) — the repo has exactly one UTC-shape definition and exactly one window
+  definition.
+- **better-sqlite3 transaction is synchronous.** First GREEN run failed with
+  `TypeError: Transaction function cannot return a promise`; drizzle's
+  better-sqlite3 transaction requires a sync callback. `removeStory` now runs
+  select `.get()`, delete `.run()`, insert `.run()` inside `db.transaction` —
+  the transactional-remove property (SL R7) is unchanged and is what the
+  rollback triangulation test proves.
+- **`SAFETY:` cast on createStory's `.returning()`** — an INSERT without WHERE
+  always returns exactly the inserted row; `noUncheckedIndexedAccess` cannot see
+  that (same precedent class as PR 3's scoped SAFETY cast / PR 4's TRIANGULATE
+  type fix).
+- **`StoryNotFoundError`** typed for PR 10's 404 mapping; pinned in RED scope
+  (`updateStory` unknown id). FK violations for an unknown project id surface
+  raw from SQLite — project-404 handling belongs to PRs 9–10.
+- **Stale-`published` expiry** (SL R4 second scenario) intentionally not
+  re-tested here: it is owned by PR 6's sweep-first generation (per the task).
+- **LSP note.** Expected RED-phase `Cannot find module './story-service.js'`
+  diagnostics during RED/GREEN transitions — refuted by green Vitest runs and
+  clean `tsc --noEmit`; same class as the PR 1–4 notes (NodeNext maps `.js`
+  specifiers to sibling `.ts` sources).
+
+### Bounds
+
+- Authored new files: expiry-window.test.ts 103, story-service.test.ts 324,
+  expiry-window.ts 36, story-service.ts 164, ordering.test.ts 39, ordering.ts
+  14 = **680**; tracked deltas: `src/index.ts` +3, `package.json` +2/−1
+  (zod), `pnpm-lock.yaml` +3, `tasks.md` ±10 (5 checkbox flips).
+- Code-facing authored footprint ≈ **688 lines** — inside the 700-line runtime
+  attempt cap and the amended ≤800 per-PR budget; over the original 400-line
+  review budget, which the operator's amendment (Conventions, approved
+  2026-09-12) supersedes for this change. Nothing was deleted, compressed, or
+  restyled to fit; the tests-dominant strict-TDD unit is one cohesive work unit
+  (one commit when the orchestrator commits).
