@@ -13,6 +13,7 @@ import { registerStoryEditRoutes } from "./routes/story-edit.js";
 import { registerStoryRoutes } from "./routes/stories.js";
 import { registerHealthRoute } from "./routes/health.js";
 import { registerProjectRoutes } from "./routes/projects.js";
+import { registerPublicationRoutes } from "./routes/publication.js";
 
 const SERVER_DEFAULTS = {
   host: "127.0.0.1",
@@ -127,6 +128,7 @@ export function buildServer(
   registerCorsCheckRoute(server, dependencies);
   registerStoryRoutes(server, dependencies);
   registerStoryEditRoutes(server, dependencies);
+  registerPublicationRoutes(server, dependencies);
 
   return server;
 }

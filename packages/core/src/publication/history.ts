@@ -67,6 +67,19 @@ export async function recordFailure(
   await pruneHistory(db, input.projectId);
 }
 
+/** Lists the newest retained publication rows for the local API history façade. */
+export async function listPublishHistory(
+  db: DrizzleDb,
+  projectId: string,
+): Promise<PublishHistoryRow[]> {
+  return db
+    .select()
+    .from(publishHistory)
+    .where(eq(publishHistory.projectId, projectId))
+    .orderBy(desc(publishHistory.publishedAt))
+    .limit(PUBLISH_HISTORY_LIMIT);
+}
+
 /** Newest `result='success'` row for the project (rollback source, MP R5). */
 export async function latestSuccessRow(
   db: DrizzleDb,

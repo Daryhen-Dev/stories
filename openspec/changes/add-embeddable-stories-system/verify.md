@@ -588,3 +588,45 @@ removed to reduce review evidence.
 - **GREEN:** `registerStoryRoutes()` captures one request-scoped instant and passes it to both `readStoryMultipart()` and `createStory()`; multipart scalar validation now consumes that supplied instant instead of allocating a second clock. The focused suite passed 9/9.
 - **TRIANGULATE:** a request at 24 hours minus 1 ms returns typed 400 before adapter upload and leaves no story row; the inclusive boundary still inserts exactly once.
 - **Final regression:** local-api 30/30; core 80/80; PR 10A adapter regression 22 passed / 1 expected skip; workspace 170 passed / 1 expected skip; typecheck, lint, and whitespace checks pass. This is a bounded PR 10B correction; no new product scope was introduced.
+
+## PR 11 — `@stories/local-api` publication endpoints (draft evidence, size-gated)
+
+- Branch: `sdd/pr11-publication-endpoints` stacked on PR 10B. Scope: only HTTP publish, rollback, and read-safe publication-history façades over the established PR 6 core service.
+- **No-success rollback contract:** HTTP **409 Conflict**, `{ error: "NO_SUCCESSFUL_PUBLICATION", detail }`. This stable typed condition is distinct from unknown-project 404 and was pinned during RED/TRIANGULATE.
+
+### TDD cycle evidence
+
+| Phase | Command | Result |
+| --- | --- | --- |
+| Safety net | `pnpm --filter @stories/local-api test` | PASS — 4 files / 30 tests before PR 11 edits. |
+| RED | `pnpm --filter @stories/local-api test -- test/publication.test.ts` | FAIL — five endpoint scenarios returned Fastify route-not-found 404s because publication routes were absent. |
+| GREEN | same focused command | PASS — 5 files / 35 tests after routes, core history façade, and server registration. |
+| TRIANGULATE | same focused command | PASS — 5 files / 37 tests; no-success conflict and failed-history/prior-manifest preservation added. |
+| REFACTOR RED | same focused command | FAIL — unexpected publication error incorrectly returned 400 instead of the PR 10B-style 500 shape. |
+| REFACTOR GREEN | same focused command | PASS — 5 files / 38 tests after validation-only 400 mapping and standard 500 fallback. |
+| Verify | local-api/core/workspace suites; typecheck; lint; `git diff --check` | PASS — local-api 38/38; core 80/80; workspace 178 passed / 1 env-gated skip; static checks clean. |
+
+### Scenario traceability
+
+- `POST /api/projects/:id/publish` executes `createPublicationService().publish()` and returns `{ status: "published", manifestUrl }`; `AdapterError` maps to the local API typed `502 { error: code, detail }` convention.
+- `POST /api/projects/:id/rollback` executes verbatim latest-success restore; no prior success maps to the stable 409 contract above.
+- `GET /api/projects/:id/publish-history` checks project existence, returns at most 50 newest-first result records, and omits `contentJson` and `storyIdsJson` so stored manifest bytes cannot escape.
+- All three endpoints map a missing project to `404 { error: "PROJECT_NOT_FOUND", message: "Project not found." }`.
+- MP R4 failure proof confirms a failed manifest upload becomes a `failed` history record while the previously published manifest bytes are untouched. The evidence deliberately makes no stronger read-back-mismatch preservation claim than the design permits.
+
+### Files and boundary
+
+- New: `packages/local-api/src/routes/publication.ts`, `packages/local-api/test/publication.test.ts`.
+- Updated: `packages/local-api/src/server.ts`, `packages/core/src/publication/history.ts`, and `packages/core/src/publication/publication-service.ts`.
+- The API route consumes existing core Zod validation through `parseProjectIdParams()` rather than adding a local Zod dependency. The only core extension lists retained history after confirming project existence.
+
+### Bounds — recorded size-exception history
+
+- Initial selected-candidate accounting reached **609 logical lines** (117 tracked additions + 6 tracked deletions + 486 selected untracked route/test lines), exceeding the normal **400-line** limit by **209**. The earlier pre-evidence code/test subtotal was 523 logical lines.
+- The candidate remained cohesive: endpoint behavior, strict-TDD coverage, and required evidence were not removed or compressed to manipulate the count.
+
+### Resolution — maintainer-approved final size exception
+
+- The maintainer first approved the 637-line reconciliation, then explicitly authorized a final **651 / 400** ceiling after mandatory evidence was finalized. The current reconciled candidate measures **650 / 400 logical changed lines** (**+250**): **132 tracked diff lines + 518 selected untracked route/test lines**. Native SDD authority records the 651-line ceiling; plain `git diff --numstat` omits untracked files.
+- The route, core history facade, server registration, integration suite, and strict-TDD/OpenSpec evidence are retained as one cohesive unit. No tests, documentation, comments, or behavior were deleted or compressed to force the former cap.
+- The Verify & bounds row is checked. Final validation passed: local-api 38/38, core 80/80, workspace 178 passed / 1 expected env-gated skip, typecheck, lint, and `git diff --check` clean. Candidate is ready for independent verification and native review; no commit, stage, push, or PR action occurred.

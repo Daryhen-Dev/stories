@@ -10,7 +10,7 @@ import type { DrizzleDb } from "../db/client.js";
 import { projects } from "../db/schema.js";
 import type { StoryRow } from "../domain/story-service.js";
 import { generateManifest } from "./generate-manifest.js";
-import { recordFailure, recordSuccess } from "./history.js";
+import { listPublishHistory, recordFailure, recordSuccess } from "./history.js";
 import {
   MANIFEST_CACHE_CONTROL_SECONDS,
   MANIFEST_CONTENT_TYPE,
@@ -163,7 +163,13 @@ export function createPublicationService(deps: PublicationDeps) {
     });
   }
 
-  return { publish, rollback } as const;
+  /** Lists the newest retained rows after confirming the project exists. */
+  async function listHistory(projectId: string) {
+    await loadProject(projectId);
+    return listPublishHistory(deps.db, projectId);
+  }
+
+  return { listHistory, publish, rollback } as const;
 }
 
 /**
