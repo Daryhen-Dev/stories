@@ -53,10 +53,13 @@ type NoLifecycleMembers =
 const _noLifecycleMembers: NoLifecycleMembers = true;
 
 describe("public surface (MSA R1/R5/R6)", () => {
-  it("exports exactly the contract surface: AdapterError, the fake, and the contract suite", () => {
+  it("exports the adapter contract plus the reusable streaming guard", () => {
     expect(Object.keys(storageAdapters).sort()).toEqual([
       "AdapterError",
+      "DEFAULT_MAX_UPLOAD_BYTES",
+      "StreamLengthError",
       "createFakeStorageAdapter",
+      "guardUploadBody",
       "runStorageAdapterContractSuite",
     ]);
   });

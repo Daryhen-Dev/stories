@@ -14,13 +14,18 @@ capture (Q4), and story removal with pending-deletion bookkeeping. SQLite in
 Traces: proposal capability 3 · AC1 · Q2 (immediate publish) · R5
 
 The system MUST create stories via a loopback multipart endpoint
-(`POST /api/projects/:id/stories`) that validates all form fields with Zod
-BEFORE touching the file stream, then streams the media part end-to-end
-(browser → multipart stream → adapter upload) without buffering the whole file,
-carrying the part's expected length so the upload can be guarded and later
-verified. Creation MUST set the story's local status to `published` and MUST
-automatically trigger a project publish afterwards (Q2). Supported media types
-are photo and video; a poster file part is optional.
+(`POST /api/projects/:id/stories`) that validates all scalar form fields with Zod
+BEFORE accepting a file part, then streams the media part end-to-end (browser →
+multipart stream → adapter upload) without buffering the whole file. The request
+protocol requires scalar metadata before every file part: `type`, `expiresAt`,
+`position`, and `mediaSize` are required; `durationSeconds` and `posterSize` are
+optional, with `posterSize` required when a poster file is present. The declared
+sizes are guarded against the configured limit and counted while streaming; the
+actual bytes MUST exactly match the corresponding declaration. A file arriving
+before valid required metadata is rejected without an adapter upload. Creation
+MUST set the story's local status to `published` and MUST automatically trigger a
+project publish afterwards (Q2). Supported media types are photo and video; a
+poster file part is optional.
 
 #### Scenario: A photo story is created and auto-published
 
@@ -34,14 +39,24 @@ are photo and video; a poster file part is optional.
 - WHEN the API processes the request
 - THEN validation fails with a typed error and the file stream is not uploaded to storage
 
+#### Scenario: A file cannot precede its validated metadata
+
+- GIVEN a multipart submission whose `media` file part arrives before the required
+  scalar metadata
+- WHEN the API processes the request
+- THEN it rejects the request with a typed validation error and never calls
+  `adapter.upload`
+
 ### Requirement: Configurable upload size limit
 
 Traces: R5 · D9 (max upload 200 MB via `STORIES_MAX_UPLOAD_MB`)
 
 The system MUST enforce a per-part upload size limit equal to the configured
 maximum (default 200 MB), rejecting oversized uploads with HTTP `413` and a
-typed error payload. The panel MUST surface the current limit to the operator
-and pre-check file size before submit.
+typed error payload. Each declared `mediaSize` or `posterSize` MUST be no greater
+than that maximum before its file part is accepted; a streaming byte counter MUST
+also reject an actual overflow, underflow, or final size mismatch. The panel MUST
+surface the current limit to the operator and pre-check file size before submit.
 
 #### Scenario: Oversized video is rejected with 413
 

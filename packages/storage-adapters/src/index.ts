@@ -1,5 +1,14 @@
 export { AdapterError } from "./errors.js";
 export type { AdapterErrorCode } from "./errors.js";
+export {
+  DEFAULT_MAX_UPLOAD_BYTES,
+  guardUploadBody,
+  StreamLengthError,
+} from "./stream-guard.js";
+export type {
+  GuardUploadBodyOptions,
+  StreamLengthFailureReason,
+} from "./stream-guard.js";
 export { createFakeStorageAdapter } from "./fake-adapter.js";
 export type {
   FakeStorageAdapter,

@@ -2,12 +2,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { runStorageAdapterContractSuite } from "./contract-suite.js";
 import { AdapterError } from "./errors.js";
+import { guardUploadBody, StreamLengthError } from "./stream-guard.js";
 import {
   createSupabaseStorageAdapter,
   type SupabaseStorageBucketClient,
   type SupabaseStorageErrorLike,
 } from "./supabase-adapter.js";
 import { textBytes, uploadInput } from "./testing.js";
+import type { UploadInput } from "./types.js";
 
 const CONFIG = {
   bucket: "stories-bucket",
@@ -25,6 +27,29 @@ interface StubObject {
 
 const createStore = (): Map<string, StubObject> => new Map();
 
+/** The stub consumes streams only to emulate provider-side stored bytes. */
+const collectStubBody = async (
+  body: UploadInput["body"],
+): Promise<Uint8Array> => {
+  if (body instanceof Uint8Array) return body;
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  for (;;) {
+    const next = await reader.read();
+    if (next.done) break;
+    chunks.push(next.value);
+    length += next.value.byteLength;
+  }
+  const bytes = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
+};
+
 /**
  * Minimal in-memory emulation of the SDK bucket-client surface the adapter
  * uses (MSA R2 RED: provider failures are injected as SDK-shaped errors, the
@@ -36,7 +61,7 @@ const createStubBucketClient = (
 ): SupabaseStorageBucketClient => {
   const base: SupabaseStorageBucketClient = {
     async upload(path, body, options) {
-      const bytes = body instanceof Uint8Array ? body : new Uint8Array();
+      const bytes = await collectStubBody(body);
       store.set(path, {
         bytes,
         contentType: options.contentType,
@@ -284,6 +309,79 @@ describe("supabaseStorageAdapter failure mapping (MSA R2/R5 — stubbed SDK clie
 describe("supabaseStorageAdapter contract behaviors (stub-backed, unit-mapped)", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it("preserves a StreamLengthError from the real SDK request wrapper", async () => {
+    vi.stubGlobal(
+      "fetch",
+      async (input: string | URL | Request, init?: RequestInit) => {
+        const body = input instanceof Request ? input.body : init?.body;
+        await new Response(body).arrayBuffer();
+        return new Response(JSON.stringify({ Key: "stories/s1/media.mp4" }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      },
+    );
+    const adapter = createSupabaseStorageAdapter(CONFIG);
+    const body = guardUploadBody(textBytes("x"), {
+      contentLength: 2,
+      provider: "supabase",
+    });
+
+    let raised: unknown;
+    try {
+      await adapter.upload({
+        key: "stories/s1/media.mp4",
+        body,
+        contentType: "video/mp4",
+        contentLength: 2,
+        cacheControlSeconds: 31536000,
+      });
+    } catch (error) {
+      raised = error;
+    }
+
+    expect(raised).toBeInstanceOf(StreamLengthError);
+    expect((raised as StreamLengthError).reason).toBe("UNDERFLOW");
+  });
+
+  it("forwards an unread ReadableStream unchanged to the SDK boundary", async () => {
+    let received: unknown;
+    let pulls = 0;
+    let receivedBytes: Uint8Array | undefined;
+    const body = new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          pulls += 1;
+          controller.enqueue(textBytes("streamed media"));
+          controller.close();
+        },
+      },
+      { highWaterMark: 0 },
+    );
+    const adapter = createSupabaseStorageAdapter(
+      CONFIG,
+      createStubBucketClient(createStore(), {
+        upload: async (_path, candidate) => {
+          received = candidate;
+          expect(pulls).toBe(0);
+          receivedBytes = await collectStubBody(candidate);
+          return { data: { path: "stories/s1/media.mp4" }, error: null };
+        },
+      }),
+    );
+
+    await adapter.upload({
+      key: "stories/s1/media.mp4",
+      body,
+      contentType: "video/mp4",
+      contentLength: 14,
+      cacheControlSeconds: 31536000,
+    });
+
+    expect(received).toBe(body);
+    expect(receivedBytes).toEqual(textBytes("streamed media"));
   });
 
   it("passes the provider-agnostic contract suite against the in-memory-backed stub client (MSA R4)", async () => {

@@ -800,3 +800,56 @@ rewritten or lost.
 - No design deviation. Zod 4 disallows `.omit()` after an object refinement, so equivalent shared request schemas are explicit and tested; remediation language is sourced from Spike B's documented gateway/S3-compatibility limits.
 - Next unchecked PR 10 rows remain exactly: `- [ ] **RED** Write \`packages/local-api/test/stories.test.ts\`...`;`- [ ] **GREEN** Implement \`src/routes/stories.ts\`...`;`- [ ] **TRIANGULATE** Video with \`durationSeconds\` field...`;`- [ ] **REFACTOR** Extract the field-first validation guard...`;`- [ ] **Verify & bounds** Suites green...` (all remain visibly unchecked in `tasks.md`; PR 11+ untouched).
 - PR boundary: PR 9 only. Code-facing diff is **+1,379/−6 = 1,385** lines before OpenSpec evidence; final candidate remains within the approved 1,500-line PR budget. No size exception is needed.
+
+## Run 10 — PR 10A `@stories/storage-adapters` truthful streaming contract + upload protocol (branch `sdd/pr10a-streaming-contract`)
+
+- Status consumed: parent-authoritative `add-embeddable-stories-system`, `applyState: ready`, repo-local workspace `/home/daryhen/Documents/proyects/stories`; delivery `auto-chain` + stacked-to-main; native attempt generation 10 `pr10a-streaming-contract`, explicit 1,500-line cap. The one pre-existing untracked `.codegraph/.gitignore` was excluded through the provider inventory.
+- Strict TDD: active (Vitest). The active runtime did not expose the configured SDD executor after its profile cache reported invalid `max` effort values, so the parent performed a bounded fallback limited to the exact five PR 10A tasks; no local-api route, dependency, Git delivery, or review operation occurred.
+
+### Completed tasks (persisted in `tasks.md`)
+
+- [x] RED — an SDK-boundary stream test failed: the adapter passed a `Uint8Array` and had already consumed/closed the source stream; the new guard test initially failed because its module was absent.
+- [x] GREEN — `stream-guard.ts` validates declared size before reads, counts streamed chunks without collecting them, and the Supabase adapter now passes `UploadInput.body` directly to the SDK. The fake remains the only `asBytes()` consumer.
+- [x] TRIANGULATE — tests cover stream identity plus zero pre-SDK pulls, multi-chunk forwarding, declared-size rejection, underflow, declared overflow, actual configured-limit overflow, and `Uint8Array` compatibility.
+- [x] REFACTOR — guard exports/types are focused and reusable for PR 10B; fake and collector comments distinguish in-memory test emulation from production forwarding.
+- [x] Verify & bounds — adapter 42 passing / 1 live profile skipped; workspace 158 passing / 1 skipped; package/root typecheck, lint, and whitespace checks pass. All five PR 10A rows are visibly `[x]`; PR 10B remains `[ ]`.
+
+### TDD Cycle Evidence
+
+| Task | Test files | RED | GREEN | TRIANGULATE | REFACTOR / verify |
+| --- | --- | --- | --- | --- | --- |
+| Direct adapter streaming | `supabase-adapter.test.ts` | Stub received buffered `Uint8Array` | Exact `ReadableStream` forwarded | Zero pre-SDK pulls + provider consumes same bytes | Contract suite remains green |
+| Declared-length guard | `stream-guard.test.ts` | Missing module | Guard streams without collection | multi-chunk, underflow, both overflow modes, bytes regression | Public exports + fake-only collection documented |
+
+### Files changed
+
+- `packages/storage-adapters/src/stream-guard.{ts,test.ts}` — reusable non-buffering declared-length guard and strict tests.
+- `src/supabase-adapter.{ts,test.ts}` — direct SDK body forwarding with an unread-stream boundary proof.
+- `src/{body-bytes,fake-adapter,index,public-surface.test}.ts` — test-double-only collection documentation and guard exports.
+- `openspec/changes/add-embeddable-stories-system/{tasks,design,specs/*}` — approved PR 10A/PR 10B split and protocol contract; `verify.md` / this progress log — evidence only.
+
+### Commands and results
+
+- `pnpm --filter @stories/storage-adapters test` — PASS, 6 files / **42 tests**, 1 env-gated live profile skipped.
+- `pnpm --filter @stories/storage-adapters exec tsc -p tsconfig.json --noEmit` — PASS.
+- `pnpm typecheck` · `pnpm lint` · `git diff --check` — PASS.
+- `pnpm test` — PASS, 23 files / **158 tests**, 1 skipped live profile.
+
+### Remaining tasks / PR boundary
+
+- PR 10A is complete only through its adapter transport/protocol boundary. PR 10B is the next unchecked work unit and owns `@fastify/multipart`, endpoint parsing, story CRUD, verification, and auto-publication.
+- Current local aggregate measurement is **+704/−100 = 804 logical lines**, below the ≤1,500 PR cap; native settlement owns each attempt's authoritative count. No tests, docs, or comments were removed for budget purposes.
+- `.codegraph/.gitignore` remains untracked and excluded; no stage, commit, push, PR, or native review was performed.
+
+### Judgment Day remediation — `R10A-STREAM-ERROR-REASON`
+
+- Strict TDD RED: `pnpm --filter @stories/storage-adapters test -- src/supabase-adapter.test.ts` failed (exit 1) with the new default-client, installed `@supabase/storage-js@2.116.0` local-fetch seam: consuming a guarded underflow stream in mocked `fetch` made `adapter.upload()` reject a generic `AdapterError` rather than `StreamLengthError`.
+- GREEN: upload recognizes only the SDK error's one-level `originalError` when that value is already an `AdapterError`; the original `StreamLengthError` now crosses unchanged, retaining `reason === "UNDERFLOW"`. Other nested values and the existing provider taxonomy are unchanged.
+- Focused verification: the same test command passed (exit 0), 6 files / 42 passed / 1 env-gated live profile skipped; package `tsc -p tsconfig.json --noEmit` and `git diff --check` passed (exit 0). No stream guard, local-api, dependency, lockfile, task, or delivery file changed.
+
+### Judgment Day remediation — `R10A-GUARD-PREFETCH`
+
+- RED: `pnpm --filter @stories/storage-adapters test -- src/stream-guard.test.ts` failed (exit 1): after one microtask an unconsumed guard had pulled its `{ highWaterMark: 0 }` source once (`expected 0`, received `1`).
+- GREEN: `guardUploadBody()` now constructs its output `ReadableStream` with `{ highWaterMark: 0 }`, so it neither acquires nor pulls or locks the source until a consumer reads the returned stream. The focused test also consumes the guard and confirms multi-chunk byte forwarding.
+- Focused validation: the same command passed (exit 0), 6 files / 42 passed / 1 env-gated live profile skipped. Underflow and both overflow scenarios remain in the focused suite.
+- Final safety net after the correction: adapter suite 42 passing / 1 skipped; root typecheck, lint, `git diff --check`, and workspace suite 158 passing / 1 skipped all pass.
