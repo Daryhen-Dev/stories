@@ -8,7 +8,6 @@
 import { createClient } from "@supabase/supabase-js";
 
 import { AdapterError, type AdapterErrorCode } from "./errors.js";
-import { asBytes } from "./body-bytes.js";
 import type {
   AdapterConfig,
   ObjectExpectation,
@@ -41,7 +40,7 @@ export interface SupabaseStorageFileObjectLike {
 export interface SupabaseStorageBucketClient {
   upload(
     path: string,
-    body: unknown,
+    body: UploadInput["body"],
     options: {
       readonly contentType: string;
       readonly cacheControl: string;
@@ -183,6 +182,14 @@ const classifySdkError = (
   );
 };
 
+const nestedAdapterError = (
+  error: SupabaseStorageErrorLike,
+): AdapterError | undefined => {
+  const originalError = (error as { readonly originalError?: unknown })
+    .originalError;
+  return originalError instanceof AdapterError ? originalError : undefined;
+};
+
 /** Normalizes anything thrown during an operation into the taxonomy (MSA R2). */
 const thrownToAdapterError = (
   provider: ProviderId,
@@ -239,16 +246,21 @@ export const createSupabaseStorageAdapter = (
   ): Promise<{ readonly etag?: string }> => {
     const operation = `upload of "${input.key}"`;
     try {
-      const body = await asBytes(input.body);
+      // The Supabase SDK accepts Uint8Array and ReadableStream bodies. Preserve
+      // the exact contract body so production uploads remain streaming; the later
+      // multipart route wraps file streams with guardUploadBody before this call.
       // upsert: republication overwrites the manifest/media keys; without it
       // the SDK rejects a repeated upload of an existing key.
-      const { error } = await client.upload(input.key, body, {
+      const { error } = await client.upload(input.key, input.body, {
         contentType: input.contentType,
         cacheControl: d9CacheControl(input.cacheControlSeconds),
         upsert: true,
       });
       if (error)
-        throw classifySdkError(provider, operation, "UPLOAD_FAILED", error);
+        throw (
+          nestedAdapterError(error) ??
+          classifySdkError(provider, operation, "UPLOAD_FAILED", error)
+        );
       return {};
     } catch (caught) {
       throw thrownToAdapterError(provider, operation, "UPLOAD_FAILED", caught);

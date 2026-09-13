@@ -2,10 +2,9 @@
 
 Implementation plan for the first product slice: local-first panel → per-project
 public manifests on Supabase → Lit embed for Astro/Next.js sites, with PC-off
-availability and expiry. The change is delivered as **18 stacked PRs**
-(`stacked-to-main`), each ≤400 estimated changed lines, each with its own
-verification and rollback boundary. This file plans work only; it implements
-nothing.
+availability and expiry. The change is delivered as **19 stacked PRs**
+(`stacked-to-main`), each with its own verification and rollback boundary. This
+file plans work only; it implements nothing.
 
 - Prerequisite: `sdd-monorepo-bootstrap` (NOT yet applied — it is the first
   implementation step and must land before PR 1) provides the pnpm workspace, TS
@@ -15,7 +14,7 @@ nothing.
 - Artifact store: `openspec`. Inputs: `proposal.md`, `design.md` (D1–D10,
   D9 parameters), `spike-findings.md`, `specs/*/spec.md`.
 - Delivery decision (operator, resolved): `auto-chain` + `stacked-to-main`,
-  400-line budget per PR. `Decision needed before apply: No`.
+  ≤1,500 changed-line budget per PR. `Decision needed before apply: No`.
 
 ## Conventions
 
@@ -45,27 +44,36 @@ nothing.
   per-PR human review budget is amended to **≤1,500 changed lines** for the
   remainder of this change. Measured reality of PRs 1–6 (361 / 1,039 / 1,279 /
   500 / 688 / 1,363) showed tests-dominant TDD units exceed both the original
-  400-line forecast and the first 800-line amendment; the
-  early-measure-and-split rule still applies when a unit blows far past the
-  budget, and diffs are never shrunk by deleting tests or docs.
-  deleting tests or docs. Individual `diff ≤400` mentions in older PR sections
-  are superseded by this amendment.
-- **PR mechanics (stacked-to-main):** PR 1 targets `main`; PR N targets the
-  branch of PR N−1 (GitHub retargets to `main` as predecessors merge; the last
-  PR is the final integration to `main`). Branch names: `sdd/prNN-<slug>`.
-  Before opening any PR: measure `git diff --stat <base>...HEAD`; if it exceeds
-  400 lines, make **one honest slicing pass** (chained-pr skill) — never shrink
-  diffs by deleting comments/tests/docs. No child subagents are launched by
-  this plan; the orchestrator owns delegation.
+  400-line forecast and the first 800-line amendment; the early-measure-and-split
+  rule still applies when a unit blows far past the budget, and diffs are never
+  shrunk by deleting tests or docs. Individual `diff ≤400` mentions in older PR
+  sections are superseded by this amendment.
+- **Streaming split (maintainer-approved after PR 9 discovery):** the original
+  PR 10 is split into **PR 10A** (truthful adapter streaming + declared-length
+  protocol) and **PR 10B** (story endpoints). Discovery established that the
+  existing adapters materialized stream bodies and multipart had no trustworthy
+  per-file size semantics, so the original slice could not honestly satisfy SL
+  R1/R2. PR 10A establishes and tests the transport contract; PR 10B consumes it
+  without reimplementing it. Downstream labels remain PR 11–PR 18 to preserve
+  historical references.
+- **PR mechanics (stacked-to-main):** PR 1 targets `main`; each later slice
+  targets its predecessor branch (GitHub retargets to `main` as predecessors
+  merge; the last PR is the final integration). Branch names use
+  `sdd/prNN-<slug>` except the approved split, which uses
+  `sdd/pr10a-streaming-contract` and `sdd/pr10b-story-endpoints`. Before opening
+  any PR: measure `git diff --stat <base>...HEAD`; if it exceeds 1,500 changed
+  lines, make **one honest slicing pass** (chained-pr skill) — never shrink diffs
+  by deleting comments/tests/docs. No child subagents are launched by this plan;
+  the orchestrator owns delegation.
 
 ## Review Workload Forecast (summary)
 
 | Field | Value |
 | ------- | ------- |
-| Estimated changed lines | ≈4,800–5,900 across 18 stacked PRs (bottom-up; see per-PR table at the end) |
-| 400-line budget risk | Low (per PR: every PR is sized ≤400 with a measured guard at PR-open time) |
+| Planned delivery | 19 stacked work units: PR 10A establishes truthful streaming; PR 10B adds stories endpoints; downstream labels remain PR 11–PR 18. |
+| Review budget | ≤1,500 changed lines per PR (operator amendment). |
+| Forecast basis | The former numeric total is superseded for the split; PR 10A and PR 10B are measured from their TDD evidence rather than assigned invented estimates. |
 | Chained PRs recommended | Yes |
-| Suggested split | PR 1 → PR 18 stacked-to-main (manifest-schema → adapters → core → local-api → embed → demos/e2e → panel) |
 | Delivery strategy | auto-chain (operator decision; supersedes the `ask-on-risk` config default) |
 | Chain strategy | stacked-to-main |
 
@@ -73,15 +81,12 @@ nothing.
 Decision needed before apply: No
 Chained PRs recommended: Yes
 Chain strategy: stacked-to-main
-400-line budget risk: Low
+≤1,500-line budget risk: Low
 ```
 
-Forecast note: the bottom-up total is higher than the proposal's top-down
-1,900–3,100 estimate because it itemizes platform/test infrastructure the
-capability rollup did not line-item (security backbone, thin endpoint PRs,
-Supabase adapter + provider simulator, boundary scans, demos/e2e orchestration)
-and uses conservative test sizing. Total-size risk is acknowledged and accepted
-by the operator's `auto-chain` decision; per-PR budget risk stays Low.
+Forecast note: the split is a requirements-correctness boundary, not code golf.
+It isolates the provider-streaming and declared-size contract from Fastify route
+behavior so each work unit can be reviewed, verified, and reverted independently.
 
 ---
 
@@ -222,20 +227,35 @@ by the operator's `auto-chain` decision; per-PR budget risk stays Low.
 - [x] **REFACTOR** Factor shared Zod request schemas; keep provider types out of routes (contract only). <!-- sdd-owner: implementation -->
 - [x] **Verify & bounds** Suites green; PM R1–R4 scenarios pass; diff ≤400 lines; record evidence. <!-- sdd-owner: implementation -->
 
-### PR 10 — `@stories/local-api`: streaming story endpoints
+### PR 10A — `@stories/storage-adapters`: truthful streaming contract + upload protocol
 
 | | |
 | --- | --- |
-| Packages | `packages/local-api` (extends; dep: `@fastify/multipart`) |
-| Specs | SL R1 (streaming creation, validation first), R2 (upload limit), R7 (removal endpoint); MP R4 auto-publish path; AC1/AC7 API half; R5 |
-| Depends on | PR 9 · Branch → PR 9 branch |
-| Bounds | Start: stories unreachable via API · Finish: multipart streaming creation with limits + auto-publish · Verify: `pnpm --filter @stories/local-api test` · Rollback: revert branch |
+| Package | `packages/storage-adapters` (extends) |
+| Specs | MSA R1/R2/R3/R7 streaming-contract half; SL R1/R2 metadata and declared-size protocol half |
+| Depends on | PR 9 · Branch `sdd/pr10a-streaming-contract` → PR 9 branch |
+| Bounds | Start: the Supabase adapter materializes stream bodies and request sizes lack a per-file contract · Finish: the production adapter forwards a `ReadableStream` untouched, a reusable guard counts/limits declared lengths without buffering, and the metadata-before-files protocol is fixed in artifacts · Verify: `pnpm --filter @stories/storage-adapters test` · Rollback: revert branch |
 
-- [ ] **RED** Write `packages/local-api/test/stories.test.ts`: multipart creation streams the media part end-to-end (fake adapter captures a stream + `contentLength`; no full-file buffering); Zod parses fields **before** the stream is consumed (invalid `expiresAt` → typed 400 and `adapter.upload` never called — SL R1 scenario); oversized part → `413` typed payload with no story row (limit configured small in test; SL R2 scenario); creation inserts status `published` and triggers a project publish automatically (manifest bytes change without a second call — Q2); `PATCH /api/stories/:id` re-validates the window; `DELETE /api/stories/:id` removes the row + pending-deletion record (SL R7); poster part optional and stored (`posterKey`). All fail. Record evidence. <!-- sdd-owner: implementation -->
-- [ ] **GREEN** Implement `src/routes/stories.ts` (multipart handler: parse fields → size guard `min(part, STORIES_MAX_UPLOAD_MB)` → stream into `adapter.upload` → `adapter.verify(key, { size, contentType })` → insert → auto-publish via the PR 6 service), `src/routes/story-edit.ts`. Tests pass. Record evidence. <!-- sdd-owner: implementation -->
-- [ ] **TRIANGULATE** Video with `durationSeconds` field; upload-failure surfaces the typed `AdapterError` code and creates no row; publish trigger failure still records the story (local truth) and reports the publish failure separately. <!-- sdd-owner: implementation -->
-- [ ] **REFACTOR** Extract the field-first validation guard into a reusable multipart helper. <!-- sdd-owner: implementation -->
-- [ ] **Verify & bounds** Suites green; SL R1/R2/R7 + MP R4 (creation path) scenarios pass; diff ≤400 lines; record evidence. <!-- sdd-owner: implementation -->
+- [x] **RED** Extend `packages/storage-adapters/src/supabase-adapter.test.ts` and add `src/stream-guard.test.ts`: the SDK client receives the exact unread stream body; declared sizes over the configured maximum reject before consumption; underflow, overflow, and final mismatch reject through typed adapter errors without complete-body buffering; multi-chunk streams and `Uint8Array` remain supported; the fake's in-memory collection is explicitly test-double-only. All fail. Record evidence. <!-- sdd-owner: implementation -->
+- [x] **GREEN** Implement a provider-agnostic declared-length counting guard, add a typed oversize error code if needed, and update the Supabase adapter to pass `UploadInput.body` directly to the SDK instead of `asBytes()`. Keep the fake's collection only for in-memory storage emulation. Tests pass. Record evidence. <!-- sdd-owner: implementation -->
+- [x] **TRIANGULATE** Prove no eager read at the SDK boundary, exact multi-chunk forwarding, declared-size underflow/overflow behavior, and unchanged manifest-byte upload behavior. <!-- sdd-owner: implementation -->
+- [x] **REFACTOR** Keep the guard generic and reusable by the later multipart route; do not add Fastify routes, story CRUD, or publication behavior in this slice. <!-- sdd-owner: implementation -->
+- [x] **Verify & bounds** Adapter suites plus typecheck/lint green; MSA streaming scenarios and SL R1/R2 protocol boundary pass; diff ≤1,500 lines; record evidence. <!-- sdd-owner: implementation -->
+
+### PR 10B — `@stories/local-api`: streaming story endpoints
+
+| | |
+| --- | --- |
+| Packages | `packages/local-api` (extends; pinned dep: `@fastify/multipart`) |
+| Specs | SL R1 (streaming creation, validation first), R2 (upload limit), R7 (removal endpoint); MP R4 auto-publish path; AC1/AC7 API half; R5 |
+| Depends on | PR 10A · Branch `sdd/pr10b-story-endpoints` → PR 10A branch |
+| Bounds | Start: streaming contract exists but stories remain unreachable via API · Finish: multipart creation consumes the PR 10A metadata/guard protocol, validates before files, and auto-publishes · Verify: `pnpm --filter @stories/local-api test` · Rollback: revert branch |
+
+- [ ] **RED** Write `packages/local-api/test/stories.test.ts`: multipart creation sends required scalar metadata (`type`, `expiresAt`, `position`, `mediaSize`) before `media`, carries optional `durationSeconds` and `posterSize` before an optional poster, and passes a guarded stream + declared `contentLength` end-to-end; invalid `expiresAt` or file-first ordering → typed 400 with no upload; declared or actual oversize → typed 413 with no story row; creation inserts status `published` and auto-publishes (manifest bytes change without a second call); `PATCH /api/stories/:id` re-validates the window; `DELETE /api/stories/:id` removes the row + pending-deletion record; poster is optional and stored. All fail. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **GREEN** Implement `src/routes/stories.ts`, `src/routes/story-edit.ts`, and a focused multipart metadata parser that consumes the PR 10A guard (not a new buffering implementation): parse metadata → reject file-before-metadata → stream/verify media and optional poster → insert → auto-publish via the PR 6 service. Tests pass. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **TRIANGULATE** Video with `durationSeconds`; adapter upload failure surfaces the typed code and creates no row; publication failure retains local truth and reports its failure separately; declared-versus-actual size mismatch remains typed. <!-- sdd-owner: implementation -->
+- [ ] **REFACTOR** Keep field-first parsing and typed route error mapping cohesive; do not duplicate the PR 10A stream guard. <!-- sdd-owner: implementation -->
+- [ ] **Verify & bounds** Suites green; SL R1/R2/R7 + MP R4 creation scenarios pass; diff ≤1,500 lines; record evidence. <!-- sdd-owner: implementation -->
 
 ### PR 11 — `@stories/local-api`: publication endpoints
 
@@ -243,13 +263,13 @@ by the operator's `auto-chain` decision; per-PR budget risk stays Low.
 | --- | --- |
 | Package | `packages/local-api` (extends) |
 | Specs | MP R4/R5 endpoints; AC3 panel-facing typed failure |
-| Depends on | PR 10 · Branch → PR 10 branch |
+| Depends on | PR 10B · Branch → PR 10B branch |
 | Bounds | Start: publication reachable only in-process · Finish: publish/rollback/history over HTTP · Verify: `pnpm --filter @stories/local-api test` · Rollback: revert branch |
 
 - [ ] **RED** Write `packages/local-api/test/publication.test.ts`: `POST /api/projects/:id/publish` runs the flow and returns success + manifest URL; failure returns the typed `AdapterError` code/detail payload (AC3 panel surfacing); `POST /api/projects/:id/rollback` republishes the latest successful bytes verbatim; `GET /api/projects/:id/publish-history` lists ≤50 rows newest-first with results; unknown project → 404. All fail. Record evidence. <!-- sdd-owner: implementation -->
 - [ ] **GREEN** Implement `src/routes/publication.ts` wiring the PR 6 services with Zod-validated params. Tests pass. Record evidence. <!-- sdd-owner: implementation -->
 - [ ] **TRIANGULATE** Rollback with no successful history row → typed error; history reflects a failed publication without changing the manifest. <!-- sdd-owner: implementation -->
-- [ ] **REFACTOR** — (thin slice; confirm route/error shapes match PR 10 conventions). <!-- sdd-owner: implementation -->
+- [ ] **REFACTOR** — (thin slice; confirm route/error shapes match PR 10B conventions). <!-- sdd-owner: implementation -->
 - [ ] **Verify & bounds** Suite green; MP R4/R5 endpoint scenarios pass; diff ≤400 lines; record evidence. <!-- sdd-owner: implementation -->
 
 ### PR 12 — `@stories/local-api`: cleanup endpoints + triggers
@@ -336,7 +356,7 @@ by the operator's `auto-chain` decision; per-PR budget risk stays Low.
 | Depends on | PR 16 · Branch → PR 16 branch |
 | Bounds | Start: projects without stories UI · Finish: operator uploads photo/video with poster + limits enforced client-side · Verify: `pnpm --filter @stories/panel test` · Rollback: revert branch |
 
-- [ ] **RED** Write `src/lib/poster-capture.test.ts` (object-URL `<video>` mocked: seek target `min(0.1s, duration / 2)`; canvas capped at 720 px long edge; JPEG quality 0.8; capture failure or 3 s timeout omits the poster part and submission proceeds — SL R6 scenarios) and `src/pages/story-editor.test.ts` (file pre-check blocks submission over `STORIES_MAX_UPLOAD_MB` and shows the current limit — SL R2 scenario; expiry-window API errors mapped to visible UI errors naming the 24 h–30 d rule — SL R3/AC7; submit builds multipart with type/expiresAt/position/durationSeconds + optional poster). All fail. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **RED** Write `src/lib/poster-capture.test.ts` (object-URL `<video>` mocked: seek target `min(0.1s, duration / 2)`; canvas capped at 720 px long edge; JPEG quality 0.8; capture failure or 3 s timeout omits the poster part and submission proceeds — SL R6 scenarios) and `src/pages/story-editor.test.ts` (file pre-check blocks submission over `STORIES_MAX_UPLOAD_MB` and shows the current limit — SL R2 scenario; expiry-window API errors mapped to visible UI errors naming the 24 h–30 d rule — SL R3/AC7; submit builds multipart with type/expiresAt/position/mediaSize/durationSeconds + optional posterSize/poster). All fail. Record evidence. <!-- sdd-owner: implementation -->
 - [ ] **GREEN** Implement `src/pages/story-editor/*` and `src/lib/poster-capture.ts` (non-blocking: capture runs concurrently with input; never gates publish). Tests pass. Record evidence. <!-- sdd-owner: implementation -->
 - [ ] **TRIANGULATE** Capture timeout race (resolve after submit started) leaves the story intact without poster; oversized selection after a valid one re-blocks; position field editable. <!-- sdd-owner: implementation -->
 - [ ] **REFACTOR** Share the limit constant source (API-provided config) instead of duplicating 200 MB. <!-- sdd-owner: implementation -->
@@ -363,13 +383,13 @@ by the operator's `auto-chain` decision; per-PR budget risk stays Low.
 
 | AC (proposal) | Tier 1 proof (PRs) | Tier 2 (apply) |
 | --- | --- | --- |
-| 1 · Photo publishes; manifest + media serve with panel off | 6, 10, 15 | PC-off run on real bucket |
+| 1 · Photo publishes; manifest + media serve with panel off | 6, 10B, 15 | PC-off run on real bucket |
 | 2 · 24 h story expires remotely + client-side | 4/5 (sweep), 6 (generation), 13 (embed filter) | Post-expiry manifest re-fetch on real bucket |
 | 3 · Failed verification aborts; previous manifest serves | 6, 11 | — |
 | 4 · Short-TTL cache policy asserted | 2 (capture), 3 (simulator mirror), 6 (60 s requested), 15 (served header) | `curl -I` on real manifest URL |
 | 5 · Cleanup per-story; failures don't break the job | 7, 12 | Expired objects disappear on real bucket |
-| 6 · Adapter passes contract suite; no Supabase types outside | 2, 3 | Live contract profile with operator credentials |
-| 7 · Expiry outside 24 h–30 d rejected | 5, 10, 17 | — |
+| 6 · Adapter passes contract suite; no Supabase types outside | 2, 3, 10A | Live contract profile with operator credentials |
+| 7 · Expiry outside 24 h–30 d rejected | 5, 10B, 17 | — |
 | 8 · Credentials never in responses nor repo | 8, 9, 16 | — |
 | 9 · Embed renders in plain HTML + Astro + Next | 13, 14, 15 | — |
 | 10 · Panel offline end-to-end | 15 | PC-off run on real bucket |
@@ -387,43 +407,37 @@ project, using the steps documented in `spike-findings.md`:
 
 ## Review Workload Forecast
 
-| PR | Slice | Est. changed lines |
-| --- | --- | --- |
-| 1 | `manifest-schema` package | 180–230 |
-| 2 | Adapter contract + fake + suite + boundary | 320–380 |
-| 3 | Supabase adapter + provider simulator | 220–280 |
-| 4 | Core data model + `expireStories` | 220–280 |
-| 5 | Core story domain service | 250–310 |
-| 6 | Core publication + history/rollback | 340–400 |
-| 7 | Core cleanup service | 240–300 |
-| 8 | local-api security backbone + secret scan | 300–360 |
-| 9 | local-api projects + connection test | 340–400 |
-| 10 | local-api streaming story endpoints | 300–360 |
-| 11 | local-api publication endpoints | 150–200 |
-| 12 | local-api cleanup endpoints + triggers | 140–190 |
-| 13 | Embed viewer core | 290–350 |
-| 14 | Embed UX + ESM/IIFE builds | 320–390 |
-| 15 | Demos + Playwright smokes + PC-off | 280–340 |
-| 16 | Panel shell + projects + connection UI | 320–390 |
-| 17 | Panel story editor + poster capture | 300–370 |
-| 18 | Panel publish/rollback + cleanup UI + docs | 260–320 |
-| **Total** | **18 stacked PRs** | **≈4,800–5,900** |
+The post-PR 9 split is intentionally not assigned a new guessed line estimate.
+PR 10A and PR 10B each measure their actual TDD diff before review; every slice
+remains bounded by the approved ≤1,500 changed-line budget and may receive one
+honest additional split if that bound is exceeded.
 
-Per-PR `400-line budget risk`: **Low** — every slice is sized ≤400 estimated
-lines and each PR carries a measured `git diff --stat` guard before opening
-(one honest split pass if exceeded; never shrink diffs to fit).
+| PR | Slice | Budget evidence |
+| --- | --- | --- |
+| 1–9 | Completed work units | Historical evidence retained in `apply-progress.md` and `verify.md` |
+| 10A | Adapter stream forwarding + declared-length guard | Measure after RED/GREEN evidence |
+| 10B | Multipart story creation, edit, removal, auto-publish | Measure after PR 10A is committed |
+| 11 | Publication endpoints | Measure during its TDD work unit |
+| 12 | Cleanup endpoints + triggers | Measure during its TDD work unit |
+| 13 | Embed viewer core | Measure during its TDD work unit |
+| 14 | Embed UX + ESM/IIFE builds | Measure during its TDD work unit |
+| 15 | Demos + Playwright smokes + PC-off | Measure during its TDD work unit |
+| 16 | Panel shell + projects + connection UI | Measure during its TDD work unit |
+| 17 | Panel story editor + poster capture | Measure during its TDD work unit |
+| 18 | Panel publish/rollback + cleanup UI + docs | Measure during its TDD work unit |
+| **Total** | **19 stacked work units** | **≤1,500 changed lines per slice** |
 
 ```text
 Decision needed before apply: No
 Chained PRs recommended: Yes
 Chain strategy: stacked-to-main
-400-line budget risk: Low
+≤1,500-line budget risk: Low
 ```
 
 Chain diagram (each PR targets its predecessor's branch; predecessors merge to
 `main` in order; PR 18 is the final integration):
 
 ```text
-main ─▶ PR1 ─▶ PR2 ─▶ PR3 ─▶ PR4 ─▶ PR5 ─▶ PR6 ─▶ PR7 ─▶ PR8 ─▶ PR9 ─▶ PR10
-     ─▶ PR11 ─▶ PR12 ─▶ PR13 ─▶ PR14 ─▶ PR15 ─▶ PR16 ─▶ PR17 ─▶ PR18 ─▶ main
+main ─▶ PR1 ─▶ PR2 ─▶ PR3 ─▶ PR4 ─▶ PR5 ─▶ PR6 ─▶ PR7 ─▶ PR8 ─▶ PR9 ─▶ PR10A
+     ─▶ PR10B ─▶ PR11 ─▶ PR12 ─▶ PR13 ─▶ PR14 ─▶ PR15 ─▶ PR16 ─▶ PR17 ─▶ PR18 ─▶ main
 ```

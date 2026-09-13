@@ -1,9 +1,9 @@
 import type { UploadInput } from "./types.js";
 
 /**
- * Shared upload plumbing: drains any contract body (Uint8Array or single/multi
- * chunk stream) into bytes. Both the in-memory fake and the Supabase adapter
- * consume bodies through this helper (provider-agnostic; no SDK types).
+ * In-memory test-double plumbing: drains a contract body into bytes so the fake
+ * can emulate object storage. Product adapters must not call this helper for
+ * media uploads because it materializes the whole stream in application memory.
  */
 export const asBytes = async (
   body: UploadInput["body"],

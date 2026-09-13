@@ -156,3 +156,35 @@ end-to-end.
 - GIVEN a media upload performed with cache-control seconds set to `31536000`
 - WHEN the object is fetched through its public URL in the simulated provider
 - THEN the response carries `Cache-Control: public, max-age=31536000, immutable`
+
+### Requirement: Streaming upload preservation and declared-length guard
+
+Traces: SL R1/R2 · D9 · PR 10A
+
+For a `ReadableStream<Uint8Array>` upload body, a concrete production adapter
+MUST pass the body it receives directly to the provider SDK without calling a
+whole-body collector such as `asBytes()` or otherwise materializing the complete
+object in application memory. A counting guard may wrap the source upstream, but
+the guarded stream itself MUST remain streaming until the provider client consumes
+it. In-memory fakes MAY consume a stream in order to emulate stored bytes, but
+MUST document that this is test-double behavior rather than the production path.
+
+`UploadInput.contentLength` remains mandatory. A reusable streaming guard MUST
+reject a declared length greater than the configured maximum before accepting the
+body, then count chunks without buffering them and reject an actual underflow,
+overflow, or final size mismatch. The guard's failures MUST remain within the
+existing typed adapter-error boundary.
+
+#### Scenario: Supabase receives an unread stream body
+
+- GIVEN a multi-chunk `ReadableStream` supplied as an upload body
+- WHEN the Supabase reference adapter invokes the SDK client
+- THEN the SDK client receives that stream without any eager body read or
+  whole-object materialization by the adapter
+
+#### Scenario: Declared and actual streamed lengths differ
+
+- GIVEN a stream guarded with a declared content length and configured maximum
+- WHEN the stream ends short of the declaration or emits bytes beyond it
+- THEN consumption fails with a typed upload error and no buffered complete body
+  is constructed

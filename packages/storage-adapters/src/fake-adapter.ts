@@ -30,8 +30,9 @@ export interface StoredObjectMetadata {
 /**
  * In-memory StorageAdapter double (Tier 1, MSA R4/R7): records uploaded objects
  * and their cache-control metadata, simulates public/non-public buckets and bad
- * credentials, and never touches a network. `stored` is test introspection —
- * not part of the adapter contract.
+ * credentials, and never touches a network. It intentionally materializes stream
+ * bodies to emulate stored bytes; production adapters must preserve streams.
+ * `stored` is test introspection — not part of the adapter contract.
  */
 export interface FakeStorageAdapter extends StorageAdapter {
   readonly stored: ReadonlyMap<string, StoredObjectMetadata>;

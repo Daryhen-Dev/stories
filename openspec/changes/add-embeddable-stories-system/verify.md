@@ -513,3 +513,35 @@ removed to reduce review evidence.
 - Supabase remediation reflects Spike B's gateway-managed hosted CORS finding; InsForge remediation specifies an S3-compatible origin/GET/Range bucket policy, exactly matching the documented limitation.
 - Shared Zod schemas/parsers are explicit rather than `.omit()` derivations because Zod 4 forbids omitting a schema after `.refine()`; no new dependency was added, and provider SDK types stay out of routes.
 - Code-facing measurement: **+1,379/−6 = 1,385** lines before OpenSpec evidence. The final PR 9 candidate remains within the approved **≤1,500** changed-line budget; no size exception or slicing is needed.
+
+## PR 10A — `@stories/storage-adapters` truthful streaming contract + upload protocol (draft evidence, apply phase)
+
+- Branch: `sdd/pr10a-streaming-contract` (stacked on PR 9) · package: `@stories/storage-adapters`.
+- Final state: adapter **42 passing / 1 env-gated live profile skipped** · workspace **158 passing / 1 skipped** · package and root typecheck clean · lint and `git diff --check` clean.
+
+### TDD cycle evidence
+
+| Phase | Command | Result |
+| --- | --- | --- |
+| RED | `pnpm --filter @stories/storage-adapters test -- src/supabase-adapter.test.ts` | FAIL — the SDK stub received a materialized `Uint8Array` and the source stream was consumed. |
+| GREEN | focused adapter suite | PASS — 40 passing / 1 skipped after direct body forwarding and the counting guard. |
+| TRIANGULATE | focused adapter suite | PASS — 41 passing / 1 skipped; multi-chunk forwarding, underflow, declared overflow, actual limit overflow, and `Uint8Array` manifest compatibility covered. |
+| REFACTOR + verify | package suite · package/root typecheck · `pnpm lint` · `pnpm test` · `git diff --check` | PASS — package 42/1 skipped; workspace 158/1 skipped; static gates clean. |
+
+### Scenario traceability (MSA streaming contract / SL R1–R2 boundary)
+
+| Requirement / scenario | Test evidence |
+| --- | --- |
+| Supabase receives an unread stream | `forwards an unread ReadableStream unchanged to the SDK boundary` proves zero pulls before the SDK call, identity preservation, and provider-side consumption. |
+| Real SDK stream-error reason preservation | `preserves a StreamLengthError from the real SDK request wrapper` uses the default client with installed `@supabase/storage-js@2.116.0` and a local mocked `fetch` that consumes the request body; a guarded underflow emerges from `adapter.upload()` as the original `StreamLengthError` with `reason === "UNDERFLOW"`. |
+| Declared size preflight | `rejects a declared size above the limit before reading the source` proves metadata is rejected without a pull. |
+| Streaming byte accounting | multi-chunk forwarding; underflow, declared overflow, and actual-limit-overflow tests prove no complete-body collector is required. |
+| Existing upload compatibility | `keeps Uint8Array uploads compatible...`; adapter contract and manifest byte tests remain green. |
+| Fake versus production behavior | comments on `asBytes` and `createFakeStorageAdapter` state that collection is test-double-only; CodeGraph confirms `asBytes` is no longer called by Supabase. |
+
+### Notes and bounds
+
+- `guardUploadBody` turns a `Uint8Array` into a one-chunk stream or wraps an existing stream without reading it. Its output uses `{ highWaterMark: 0 }`, so the wrapper does not prefetch, acquire, pull, or lock an input stream before consumer demand; it validates declared size synchronously, then enforces declared and configured limits only as the consumer pulls chunks.
+- The Supabase Storage JS source installed at version 2.116.0 accepts `ReadableStream<Uint8Array>` and configures fetch duplex mode; the adapter forwards the exact `UploadInput.body` at that SDK boundary.
+- No Fastify route, multipart dependency, story CRUD, publication behavior, or local-api file belongs to PR 10A. Those remain exclusively in unchecked PR 10B tasks.
+- Current local aggregate measurement: **+704/−100 = 804 logical lines**, within the approved **≤1,500** budget. Native settlement owns each attempt's authoritative count. `.codegraph/.gitignore` remains excluded.

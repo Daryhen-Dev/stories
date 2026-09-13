@@ -377,19 +377,28 @@ Algorithm:
 
 ```text
 Panel form → POST /api/projects/:id/stories  (multipart/form-data, loopback only)
-  fields: type, expiresAt, position, durationSeconds?
-  files:  media (required), poster (optional, see below)
-local-api: @fastify/multipart streaming handler
-  → fileSize limit = min(part size, STORIES_MAX_UPLOAD_MB, default 200 MB) → 413 on exceed
-  → Zod-parse fields FIRST (reject before touching the stream)
-  → pipe file part body → adapter.upload({ ..., contentLength: part.file.bytesExpected })
-  → adapter.verify(key, { size, contentType })
+  scalar metadata first: type, expiresAt, position, mediaSize,
+                         durationSeconds?, posterSize?
+  file parts afterward: media (required), poster (optional, see below)
+PR 10A: reusable declared-length guard
+  → reject declared size > STORIES_MAX_UPLOAD_MB (default 200 MB)
+  → count chunks without buffering; reject underflow, overflow, or mismatch
+  → Supabase adapter forwards its received ReadableStream directly to the SDK
+PR 10B: @fastify/multipart endpoint
+  → Zod-parse every scalar field before accepting a file part; file-first → typed 400
+  → pipe guarded media/poster body → adapter.upload({ ..., contentLength: declaredSize })
+  → adapter.verify(key, { size: declaredSize, contentType })
   → INSERT story row (status='published') + auto-trigger project publish (Q2)
 ```
 
-- Streaming end-to-end: browser `File` → multipart part stream → adapter body.
-  No full-file buffering in the API; `contentLength` travels with the part so
-  the adapter can guard and later verify.
+- The request protocol, not multipart request-wide `Content-Length`, supplies each
+  expected object size: `mediaSize` is required and `posterSize` accompanies an
+  optional poster. The guarded stream must still prove the declaration against
+  actual bytes.
+- Streaming end-to-end is browser `File` → multipart part stream → counting guard
+  → adapter body → provider SDK. Neither the local API nor the production Supabase
+  adapter materializes the whole file; the in-memory fake may do so only as a test
+  double.
 - Limits are surfaced in the panel UI (pre-check `file.size`, show the current
   limit); exceeding returns HTTP 413 with a typed error payload.
 - Loopback-only transport means the stream is disk-to-disk on the operator's
