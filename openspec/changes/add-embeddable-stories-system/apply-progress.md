@@ -681,4 +681,83 @@ rewritten or lost.
 - [ ] Execute the PC-off scenario end-to-end against the real bucket: publish → stop local-api → demo site renders (AC1, AC10, MP R7). <!-- sdd-owner: implementation -->
 - [ ] `curl -I` the real manifest URL and assert `Cache-Control: public, max-age=60` (AC4, MP R6). <!-- sdd-owner: implementation -->
 - [ ] Confirm hosted CORS from a real site origin: plain GET + ranged video request (Spike B open item; PM R4). <!-- sdd-owner: implementation -->
-  - [ ] After a story's `expiresAt` passes, re-fetch the real manifest and confirm exclusion (AC2 live half). <!-- sdd-owner: implementation -->
+      - [ ] After a story's `expiresAt` passes, re-fetch the real manifest and confirm exclusion (AC2 live half). <!-- sdd-owner: implementation -->
+
+## Run 8 — PR 8 `@stories/local-api` security backbone + repository secret scan (branch `sdd/pr08-local-api-security`)
+
+- Status consumed: parent-authoritative `add-embeddable-stories-system` status,
+  `applyState: ready`, `repo-local` action context, workspace root authorized.
+  Delivery: `auto-chain` + `stacked-to-main`, assigned work unit
+  `pr08-local-api-security`, approved budget ≤1,500 changed lines. Warnings: none.
+- Runtime attempt: authenticated to the parent-held active attempt using request id
+  `pr08-local-api-security-kiro-auth-20260912`; token matched the active objective.
+  The attempt was not settled, and no branch, commit, push, PR, review, or
+  `.codegraph/` action was performed.
+- Strict TDD: active with Vitest. Skill resolution: `paths-injected`
+  (`/home/daryhen/.claude/skills/typescript/SKILL.md`).
+
+### Completed tasks (persisted in `tasks.md`)
+
+- [x] RED — added the local-api security and tracked-repository scan tests; the
+  focused local-api run failed only because `./server.js` was absent.
+- [x] GREEN — created `@stories/local-api` with the Fastify factory, loopback
+  guard, recursive serialization redaction, logger serializers, and health route;
+  added the tracked-tree secret scanner; focused tests passed.
+- [x] TRIANGULATE — covered `STORIES_API_PORT`, `[::1]`, rejected IPv6-mapped
+  Host, allowed same-origin localhost, nested and root-array payload redaction,
+  and synthetic scan findings.
+- [x] REFACTOR — retained one typed `onRequest` guard with typed 403 payloads;
+  extracted loopback authority construction and removed unnecessary async noise.
+- [x] Verify & bounds — package and boundary suites, typecheck, lint, and whitespace
+  validation all passed; PM R5 and PM R2 traceability is recorded in `verify.md`.
+
+### TDD Cycle Evidence
+
+| Task | Test file | Layer | Safety Net | RED | GREEN | TRIANGULATE | REFACTOR |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| PR 8 security backbone | `packages/local-api/src/server.test.ts` | HTTP integration | Core 74/74; boundary 3/3 | Missing `./server.js` | 8/8 | 10/10 | Single typed guard retained; 10/10 |
+| PR 8 secret scan | `tests/boundary/secret-scan.test.ts` | Boundary/unit | Boundary 3/3 | Scanner test added before implementation | Boundary 5/5 | Synthetic + tracked-tree cases | In-memory fixture construction; 5/5 |
+
+### Files changed
+
+- `packages/local-api/package.json`, `tsconfig.json`, and `src/index.ts` — new
+  workspace package scaffold with pinned `fastify` 5.12.4.
+- `packages/local-api/src/server.ts` and `src/server.test.ts` — loopback server
+  factory/listener, port resolution, safe logger serializers, and 10 HTTP tests.
+- `packages/local-api/src/plugins/loopback-guard.ts` — typed Host/Origin
+  `onRequest` boundary with 403 payloads.
+- `packages/local-api/src/plugins/redact.ts` — recursive credential-key redaction.
+- `packages/local-api/src/routes/health.ts` — `GET /api/health` liveness route.
+- `tests/boundary/secret-scan.test.ts` — synthetic and Git-tracked-tree secret scan.
+- `pnpm-lock.yaml` — Fastify resolved dependency graph.
+- `openspec/changes/add-embeddable-stories-system/tasks.md` — only the five PR 8
+  implementation task rows marked `[x]`.
+- `openspec/changes/add-embeddable-stories-system/verify.md` and this file —
+  cumulative strict-TDD and verification evidence.
+
+### Commands and results
+
+- `pnpm --filter @stories/core test && pnpm vitest run tests/boundary` — safety net
+  PASS: core 74/74; boundary 3/3 before PR 8.
+- `pnpm --filter @stories/local-api test` — RED FAIL: missing `./server.js`; then
+  GREEN 8/8; TRIANGULATE/REFACTOR/final PASS 10/10.
+- `pnpm vitest run tests/boundary` — final PASS: 2 files, 5/5.
+- `pnpm typecheck` — PASS.
+- `pnpm lint` — PASS.
+- `git diff --check` — PASS: no whitespace errors.
+
+### Deviations from design
+
+- None. The factory reserves `db` and `makeAdapter` for later route slices but does
+  not register them in PR 8; no route behavior beyond the security backbone landed.
+
+### Remaining tasks / PR boundary
+
+- All five implementation-owned PR 8 rows are visibly `[x]` in `tasks.md`.
+- PR 9 onward remains unchecked and out of scope. Exact next unchecked row:
+  `- [ ] **RED** Write \`packages/core/src/domain/project-service.test.ts\` (create/list/update/delete; DTOs omit credential columns; delete cascades — PM R1 scenarios) and \`packages/local-api/test/projects.test.ts\`: CRUD via HTTP with redacted responses; **every** GET endpoint scanned for a fixture secret (PM R2 scenario); \`POST /api/projects/:id/connection-test\` runs the adapter \`checkPublicRead\` from Node, stores the result on \`projects.lastConnectionCheck\`, responds \`browserPending: true\`; bad credentials diagnose auth-class, never \`cors\` (PM R3 scenario); \`POST /api/projects/:id/cors-check\` stores the panel result and diagnoses \`cors\` when the node probe passed but the browser fetch was rejected; ranged-probe failure reports the video-seeking diagnosis (PM R4 scenarios); invalid payloads → typed 400; unknown id → 404. All fail. Record evidence. <!-- sdd-owner: implementation -->`
+- Final candidate measurement: **+1,091/−8 = 1,099 logical changed lines**:
+  606 local-api/boundary source and tests, 347 resolved Fastify lockfile lines,
+  and 138 added/8 removed OpenSpec lines. This is within the approved ≤1,500
+  PR 8 budget; no code, tests, comments, docs, or evidence were removed to
+  affect review size.

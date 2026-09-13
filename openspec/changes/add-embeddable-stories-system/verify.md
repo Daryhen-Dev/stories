@@ -362,8 +362,6 @@ fixes them.
 - Authored new files: generate-manifest.test.ts 177, generate-manifest.ts 109, history.ts 103, policy.ts 10, publication-service.test.ts 526, publication-service.ts 254, rollback.ts 83, verify-manifest.ts 93 = **1,355**; tracked deltas: `src/index.ts` +4, `package.json` +1 (storage-adapters workspace dep), `pnpm-lock.yaml` +3 → code-facing authored ≈ **1,363 lines**; plus artifacts (tasks ±10, this section, apply-progress Run 6).
 - **Budget overage reported honestly** vs the operator amendment (≤800/PR): the work unit is generation+publication as ONE strict-TDD unit; the only cohesive split is generation (286) vs publication (1,077) — publication alone still exceeds 800, so no honest two-commit split fits. Nothing was deleted, compressed, or restyled to fit; tests are deliberately the dominant half. **Recommendation: `size:exception` for PR 6** (third after PRs 2–3). Served-header Tier-1 assert lands in PR 15; Tier 2 items stay in the final `tasks.md` section.
 
-## PR 7 — `@stories/core` cleanup service (draft evidence, apply phase)
-
 - Branch: `sdd/pr07-core-cleanup`, stacked on PR 6 commit `b69f252`.
 - Scope: only PR 7’s five implementation-owned checkboxes. Strict TDD active with `pnpm --filter @stories/core test`.
 - Final state: core suite **72/72**; workspace **122 passed, 1 skipped** (the existing env-gated Supabase profile); typecheck, lint, and whitespace validation clean.
@@ -430,3 +428,56 @@ candidate: **+896/−9 = 905 logical changed lines** (634 code-facing, 262
 OpenSpec-evidence). The operator explicitly authorized the resulting 105-line
 runtime-cap overage as a cohesive PR 7 `size:exception`; no code or test was
 removed to reduce review evidence.
+
+## PR 8 — `@stories/local-api` security backbone + repository secret scan (draft evidence, apply phase)
+
+- Branch: `sdd/pr08-local-api-security` (stacked on PR 7) · Package:
+  `packages/local-api` (new) + `tests/boundary/secret-scan.test.ts`.
+- Runner: Vitest. Strict TDD is active. No real credentials were read, sent, or
+  committed; the scanner fixture is assembled in-memory only.
+- Final state: local-api **10/10** · boundary **5/5** · root typecheck and lint
+  clean; `git diff --check` clean.
+
+### TDD cycle evidence
+
+| Phase | Command | Result |
+| --- | --- | --- |
+| Safety net | `pnpm --filter @stories/core test && pnpm vitest run tests/boundary` | PASS — core 74/74; existing boundary 3/3 before PR 8 edits |
+| RED | `pnpm --filter @stories/local-api test` | FAIL (exit 1) — `Cannot find module './server.js'`; the new server tests referenced the absent production factory after Fastify was pinned and installed |
+| GREEN | `pnpm --filter @stories/local-api test && pnpm vitest run tests/boundary` | PASS — local-api 8/8; boundary 5/5 after the Fastify factory, guard, redaction hook, serializers, health route, and tracked-tree scanner |
+| TRIANGULATE | `pnpm --filter @stories/local-api test && pnpm vitest run tests/boundary` | PASS — local-api 10/10; boundary 5/5: port `4567`, `[::1]`, rejected IPv6-mapped host, same-origin localhost, nested and root-array redaction, synthetic leakage fixture |
+| REFACTOR | `pnpm --filter @stories/local-api test && pnpm vitest run tests/boundary` | PASS — local-api 10/10; boundary 5/5 after extracting loopback authority while retaining one typed `onRequest` guard and typed 403 payloads |
+| Verify & bounds | `pnpm --filter @stories/local-api test` · `pnpm vitest run tests/boundary` · `pnpm typecheck` · `pnpm lint` · `git diff --check` | PASS — 10/10, 5/5, TypeScript clean, ESLint clean, no whitespace errors |
+
+### Scenario traceability (PM R5 / PM R2; D6/D8/D9)
+
+| Requirement / scenario | Test |
+| --- | --- |
+| D9 — loopback bind defaults to `127.0.0.1:3789` | `binds only to 127.0.0.1:3789 by default` |
+| D9 — `STORIES_API_PORT` controls bind and allowlist | `honors STORIES_API_PORT for binding and the Host allowlist` |
+| PM R5 — foreign Host rejected before handlers | `rejects a foreign Host before the route handler runs` |
+| PM R5/D6 — foreign Origin rejected before handlers; no CORS headers | `rejects a foreign Origin before handlers without adding CORS response headers` |
+| PM R5 — local same-origin and IPv6 accepted; mapped IPv6 rejected | `accepts same-origin localhost traffic on the listening port` + `accepts the IPv6 loopback Host and rejects IPv6-mapped forms` |
+| D8 — recursive response defense-in-depth | `redacts credential-like keys recursively in serialized objects and arrays` + `redacts credential-like keys inside a top-level array` |
+| D8 — logs redact credential-bearing headers | `redacts authorization, cookie, and credential-like logger fields` |
+| Health | `serves the loopback health route without CORS headers` |
+| PM R2 — scanner detects synthetic leakage and tracked tree is clean | `finds synthetic leaked content and credential-bearing file names` + `finds no fixture secret or credential-bearing file in the tracked tree` |
+
+### Notes and bounds
+
+- `buildServer({ db, makeAdapter })` retains the dependencies for later API
+  slices without registering their routes in PR 8. `listenServer` always binds
+  `127.0.0.1`; no `0.0.0.0` path exists.
+- The only allowed Hosts are `127.0.0.1:<port>`, `localhost:<port>`, and
+  `[::1]:<port>`; Origins are the corresponding `http://` forms. IPv6-mapped
+  forms are intentionally rejected.
+- The repo scan uses `git ls-files -z`, so it examines only tracked content; it
+  detects `.env*`, credential-named files, PEM/key files, private-key blocks,
+  and the synthetic fixture value. The fixture is built from fragments so the
+  real-tree pass remains meaningful.
+- **Bounds — amended budget met.** The final candidate is **+1,091/−8 =
+  1,099 logical changed lines**: 606 new local-api/boundary source and tests,
+  347 Fastify lockfile lines, and 138 added/8 removed OpenSpec evidence/task
+  lines. This is below the approved ≤1,500 PR 8 budget. The legacy per-row
+  `diff ≤400` wording is superseded by the amendment; no tests, comments, or
+  evidence were removed to affect the measurement.

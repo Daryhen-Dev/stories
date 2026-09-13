@@ -1,0 +1,19 @@
+{
+  "name": "@stories/local-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@stories/storage-adapters": "workspace:*",
+    "fastify": "5.12.4"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.4"
+  }
+}
