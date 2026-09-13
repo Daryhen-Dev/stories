@@ -11,7 +11,11 @@ import {
   seedProject,
 } from "../db/testing.js";
 import type { CreateStoryInput, StoryRow } from "./story-service.js";
-import { createStoryService, StoryNotFoundError } from "./story-service.js";
+import {
+  createStoryService,
+  parseStoryUploadMetadata,
+  StoryNotFoundError,
+} from "./story-service.js";
 
 const HOUR_MS = 3_600_000;
 const DAY_MS = 24 * HOUR_MS;
@@ -54,6 +58,41 @@ async function seed(): Promise<{
   return { db, projectId, service };
 }
 
+describe("story upload metadata parsing", () => {
+  it("uses the core Zod rules for type, expiry, position, and declared sizes before stream handling", () => {
+    const parsed = parseStoryUploadMetadata(
+      {
+        type: "video",
+        expiresAt: new Date(NOW_MS + 7 * DAY_MS).toISOString(),
+        position: 0,
+        mediaSize: 8,
+        durationSeconds: 42,
+        posterSize: 3,
+      },
+      { now: new Date(NOW_MS) },
+    );
+
+    expect(parsed).toMatchObject({
+      type: "video",
+      position: 0,
+      mediaSize: 8,
+      durationSeconds: 42,
+      posterSize: 3,
+    });
+    expect(() =>
+      parseStoryUploadMetadata(
+        {
+          type: "photo",
+          expiresAt: new Date(NOW_MS + 12 * HOUR_MS).toISOString(),
+          position: -1,
+          mediaSize: 0,
+        },
+        { now: new Date(NOW_MS) },
+      ),
+    ).toThrow(ZodError);
+  });
+});
+
 describe("createStory (SL R3 local half)", () => {
   it("inserts an app-generated UUID v4 row with status 'published'", async () => {
     const { db, projectId, service } = await seed();
@@ -79,6 +118,19 @@ describe("createStory (SL R3 local half)", () => {
       .from(stories)
       .where(eq(stories.id, row.id));
     expect(stored).toEqual(row);
+  });
+
+  it("persists a route-preallocated UUID so storage keys can share the story id", async () => {
+    const { projectId, service } = await seed();
+    const id = crypto.randomUUID();
+
+    const row = await service.createStory(
+      projectId,
+      { ...photoInput(), id } as CreateStoryInput & { readonly id: string },
+      { now: new Date(NOW_MS) },
+    );
+
+    expect(row.id).toBe(id);
   });
 
   it("accepts exactly 24 hours and exactly 30 days (SL R3 boundaries)", async () => {

@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@fastify/multipart": "9.4.0",
     "@stories/storage-adapters": "workspace:*",
     "fastify": "5.12.4"
   },

@@ -1,3 +1,4 @@
+import fastifyMultipart from "@fastify/multipart";
 import fastify, { type FastifyInstance, type RawServerDefault } from "fastify";
 
 import type { DrizzleDb } from "../../core/src/db/client.js";
@@ -8,6 +9,8 @@ import { registerLoopbackGuard } from "./plugins/loopback-guard.js";
 import { redactDeep, REDACTION } from "./plugins/redact.js";
 import { registerConnectionTestRoute } from "./routes/connection-test.js";
 import { registerCorsCheckRoute } from "./routes/cors-check.js";
+import { registerStoryEditRoutes } from "./routes/story-edit.js";
+import { registerStoryRoutes } from "./routes/stories.js";
 import { registerHealthRoute } from "./routes/health.js";
 import { registerProjectRoutes } from "./routes/projects.js";
 
@@ -29,6 +32,8 @@ export interface ServerDependencies {
   readonly makeAdapter: (
     project: ProjectRow,
   ) => Promise<StorageAdapter> | StorageAdapter;
+  /** Injectable publication read-back transport for integration tests. */
+  readonly publicationFetcher?: typeof fetch;
   /** Explicit test/process override; otherwise STORIES_API_PORT then the D9 default. */
   readonly port?: number;
 }
@@ -113,10 +118,15 @@ export function buildServer(
   server.addHook("preSerialization", (_request, _reply, payload, done) => {
     done(null, redactDeep(payload));
   });
+  server.register(fastifyMultipart, {
+    limits: { fileSize: Number.MAX_SAFE_INTEGER },
+  });
   registerHealthRoute(server);
   registerProjectRoutes(server, dependencies);
   registerConnectionTestRoute(server, dependencies);
   registerCorsCheckRoute(server, dependencies);
+  registerStoryRoutes(server, dependencies);
+  registerStoryEditRoutes(server, dependencies);
 
   return server;
 }
