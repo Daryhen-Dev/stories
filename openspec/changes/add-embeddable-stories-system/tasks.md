@@ -266,11 +266,11 @@ behavior so each work unit can be reviewed, verified, and reverted independently
 | Depends on | PR 10B · Branch → PR 10B branch |
 | Bounds | Start: publication reachable only in-process · Finish: publish/rollback/history over HTTP · Verify: `pnpm --filter @stories/local-api test` · Rollback: revert branch |
 
-- [ ] **RED** Write `packages/local-api/test/publication.test.ts`: `POST /api/projects/:id/publish` runs the flow and returns success + manifest URL; failure returns the typed `AdapterError` code/detail payload (AC3 panel surfacing); `POST /api/projects/:id/rollback` republishes the latest successful bytes verbatim; `GET /api/projects/:id/publish-history` lists ≤50 rows newest-first with results; unknown project → 404. All fail. Record evidence. <!-- sdd-owner: implementation -->
-- [ ] **GREEN** Implement `src/routes/publication.ts` wiring the PR 6 services with Zod-validated params. Tests pass. Record evidence. <!-- sdd-owner: implementation -->
-- [ ] **TRIANGULATE** Rollback with no successful history row → typed error; history reflects a failed publication without changing the manifest. <!-- sdd-owner: implementation -->
-- [ ] **REFACTOR** — (thin slice; confirm route/error shapes match PR 10B conventions). <!-- sdd-owner: implementation -->
-- [ ] **Verify & bounds** Suite green; MP R4/R5 endpoint scenarios pass; diff ≤400 lines; record evidence. <!-- sdd-owner: implementation -->
+- [x] **RED** Write `packages/local-api/test/publication.test.ts`: `POST /api/projects/:id/publish` runs the flow and returns success + manifest URL; failure returns the typed `AdapterError` code/detail payload (AC3 panel surfacing); `POST /api/projects/:id/rollback` republishes the latest successful bytes verbatim; `GET /api/projects/:id/publish-history` lists ≤50 rows newest-first with results; unknown project → 404. All fail. Record evidence. <!-- sdd-owner: implementation -->
+- [x] **GREEN** Implement `src/routes/publication.ts` wiring the PR 6 services with Zod-validated params. Tests pass. Record evidence. <!-- sdd-owner: implementation -->
+- [x] **TRIANGULATE** Rollback with no successful history row → typed error; history reflects a failed publication without changing the manifest. <!-- sdd-owner: implementation -->
+- [x] **REFACTOR** — (thin slice; confirm route/error shapes match PR 10B conventions). <!-- sdd-owner: implementation -->
+- [x] **Verify & bounds** Suite green; MP R4/R5 endpoint scenarios pass; maintainer-approved 651-line ceiling, candidate measured at 650 lines; record evidence. <!-- sdd-owner: implementation -->
 
 ### PR 12 — `@stories/local-api`: cleanup endpoints + triggers
 

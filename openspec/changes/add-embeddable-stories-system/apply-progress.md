@@ -900,3 +900,58 @@ rewritten or lost.
 - GREEN: `stories.ts` now captures one request-scoped `now`, forwards it to `readStoryMultipart`, and passes it into `createStory`; `story-multipart.ts` parses scalar metadata with that same instant. The focused test passed 9/9.
 - TRIANGULATE: a 24-hour-minus-one-millisecond request is rejected 400 before upload/insert, while the exact boundary accepts. Final gates: local-api 30/30; core 80/80; adapter regression 22 passed / 1 expected skip; workspace 170 passed / 1 expected skip; typecheck, lint, and diff checks clean.
 - The correction is confined to the existing PR 10B route/parser/test work unit. It introduces no new endpoint or contract surface, and the current runtime objective is `pr10b-expiry-boundary-clock`.
+
+## Run 12 — PR 11 `@stories/local-api` publication endpoints (size-gated)
+
+- Status consumed: parent-authoritative change `add-embeddable-stories-system`, `applyState: ready`, work unit `pr11-publication-endpoints`, repo-local workspace `/home/daryhen/Documents/proyects/stories`, and allowed edit surfaces. Delivery is `auto-chain` / `stacked-to-main`; strict TDD is active. Action-context warnings: none. No attempt-ledger, branch, commit, stage, push, review, or PR action was taken.
+- Skill resolution: `paths-injected` (`gentle-ai`, `work-unit-commits`, TypeScript, Zod 4).
+
+### Completed tasks (persisted in `tasks.md`)
+
+- [x] RED — added `packages/local-api/test/publication.test.ts`; focused run failed with five route-level 404 mismatches before `publication.ts` existed.
+- [x] GREEN — added `publication.ts`, registered it in `server.ts`, and exposed a narrow core `listHistory` façade; focused local-api suite passed 35/35.
+- [x] TRIANGULATE — pinned no-history rollback to HTTP 409 / `NO_SUCCESSFUL_PUBLICATION`; failed manifest publish records failed history while prior manifest bytes remain unchanged; focused suite passed 37/37.
+- [x] REFACTOR — matched PR 10B route/error conventions, including core-owned Zod parameter validation, 502 typed adapter payloads, 404 unknown projects, 500 unexpected failures, and a history DTO that excludes `contentJson` and `storyIdsJson`; focused suite passed 38/38.
+- [ ] Verify & bounds — all required tests are green, but the cohesive candidate is over the parent-supplied 400-line budget; it remains unchecked pending explicit `size:exception` approval.
+
+### TDD Cycle Evidence
+
+| Task | Test file | Layer | Safety Net | RED | GREEN | TRIANGULATE | REFACTOR |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| PR 11 publication endpoints | `packages/local-api/test/publication.test.ts` | Fastify integration | local-api 30/30 | 5 failures: endpoints unregistered (404) | 35/35 | 37/37: no-success rollback + failed history / retained manifest | 1 RED failure for incorrect 400 unexpected error, then 38/38 after 500 mapping |
+
+### Files changed
+
+- `packages/local-api/test/publication.test.ts` (new) — publish, rollback, history, typed failures, 404, 409, and prior-manifest preservation integration coverage.
+- `packages/local-api/src/routes/publication.ts` (new) — thin publication endpoints and typed responses.
+- `packages/local-api/src/server.ts` — route registration.
+- `packages/core/src/publication/history.ts` / `publication-service.ts` — read-only newest-50 history façade behind confirmed-project lookup.
+- `openspec/changes/add-embeddable-stories-system/tasks.md` — only completed PR 11 RED/GREEN/TRIANGULATE/REFACTOR rows marked `[x]`; Verify remains `[ ]` for the size gate.
+- `openspec/changes/add-embeddable-stories-system/verify.md` and this file — PR 11 TDD and validation evidence.
+
+### Test commands run
+
+- `pnpm --filter @stories/local-api test` — safety net PASS 30/30; focused RED FAIL 5 route-404 mismatches; GREEN PASS 35/35; TRIANGULATE PASS 37/37; refactor-error RED FAIL 1 assertion (400 versus intended 500); final focused and package PASS 38/38.
+- `pnpm --filter @stories/core test` — PASS 10 files / 80 tests.
+- `pnpm test` — PASS 25 files / 178 tests, 1 expected env-gated live profile skipped.
+- `pnpm typecheck` — PASS.
+- `pnpm lint` — PASS.
+- `git diff --check` — PASS.
+
+### Contract decisions and deviations
+
+- No-success rollback is deliberately HTTP **409** with stable error code **`NO_SUCCESSFUL_PUBLICATION`** and a detail string. It is a valid project-state conflict, not a missing route or unknown project.
+- The requested "Zod-validated params" use the existing core `parseProjectIdParams()` Zod parser; `local-api` does not add a direct Zod dependency. Structural validation-error recognition matches the PR 10B route convention.
+- MP R4 semantics are preserved: a failed manifest upload appends a failed history row while the prior object bytes remain available. This does not claim that a failed read-back mismatch can undo an object already cut over.
+- History returns at most 50 newest-first records with result/error metadata only; it does not expose stored manifest bytes, story-id JSON, or credentials.
+
+### Workload / PR boundary
+
+- Initial selected-candidate accounting reached **609 logical changed lines** (117 tracked additions + 6 tracked deletions + 486 selected new route/test lines), above the normal 400-line limit. The earlier pre-evidence code/test subtotal was 523 logical lines.
+- The route, integration suite, tiny core history read façade, and required strict-TDD evidence remain one cohesive PR 11 slice; no narrower honest split fits the assigned endpoint contract.
+
+### Resolution — maintainer-approved final size exception
+
+- The maintainer first approved the 637-line reconciliation, then explicitly authorized a final **651 / 400** ceiling after mandatory evidence was finalized. The current reconciled candidate measures **650 / 400 logical changed lines** (**+250**): **132 tracked diff lines + 518 selected untracked route/test lines**. Native SDD authority records the 651-line ceiling; ordinary `git diff --numstat` omits those untracked files.
+- No behavior, tests, comments, or evidence were removed or compressed to fit the former cap. The publication route, core-owned history facade, server registration, Fastify integration tests, and strict-TDD evidence remain one cohesive work unit.
+- The PR 11 Verify & bounds checkbox is `[x]`; downstream task rows remain untouched. Final gates passed: local-api 38/38, core 80/80, workspace 178 passed / 1 expected skip, typecheck, lint, and `git diff --check` clean. Candidate is ready for independent verification and native review; no commit, stage, push, or PR action has occurred.
