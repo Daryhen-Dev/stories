@@ -42,6 +42,12 @@ importers:
         specifier: ^4.6.2
         version: 4.6.2
 
+  packages/storage-adapters:
+    devDependencies:
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.13.4
+
 packages:
 
   '@cacheable/memory@2.2.0':
