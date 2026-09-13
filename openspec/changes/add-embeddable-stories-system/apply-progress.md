@@ -954,4 +954,68 @@ rewritten or lost.
 
 - The maintainer first approved the 637-line reconciliation, then explicitly authorized a final **651 / 400** ceiling after mandatory evidence was finalized. The current reconciled candidate measures **650 / 400 logical changed lines** (**+250**): **132 tracked diff lines + 518 selected untracked route/test lines**. Native SDD authority records the 651-line ceiling; ordinary `git diff --numstat` omits those untracked files.
 - No behavior, tests, comments, or evidence were removed or compressed to fit the former cap. The publication route, core-owned history facade, server registration, Fastify integration tests, and strict-TDD evidence remain one cohesive work unit.
-- The PR 11 Verify & bounds checkbox is `[x]`; downstream task rows remain untouched. Final gates passed: local-api 38/38, core 80/80, workspace 178 passed / 1 expected skip, typecheck, lint, and `git diff --check` clean. Candidate is ready for independent verification and native review; no commit, stage, push, or PR action has occurred.
+  - The PR 11 Verify & bounds checkbox is `[x]`; downstream task rows remain untouched. Final gates passed: local-api 38/38, core 80/80, workspace 178 passed / 1 expected skip, typecheck, lint, and `git diff --check` clean. Candidate is ready for independent verification and native review; no commit, stage, push, or PR action has occurred.
+
+## Run 13 — PR 12 `@stories/local-api` cleanup endpoints + triggers (final evidence)
+
+- Status consumed: parent-authoritative `add-embeddable-stories-system`,
+  `applyState: ready`, work unit `pr12-cleanup-endpoints`, repo-local workspace
+  `/home/daryhen/Documents/proyects/stories`, `auto-chain` / `stacked-to-main`, and
+  no action-context warnings. The supplied attempt authenticated as `proceed`;
+  terminal settlement remains parent-owned.
+- Skill resolution: `paths-injected` (`gentle-ai`, `pi-lens-lsp-navigation`).
+  Strict-TDD evidence below is historical and retained; this run is factual OpenSpec
+  reconciliation only, with no new RED/GREEN/TDD cycle.
+
+### Completed tasks (persisted in `tasks.md`)
+
+- [x] RED — new route/scheduler tests failed: 404 endpoints and absent startup or
+  periodic work produced six failures.
+- [x] GREEN — cleanup façade, scheduler, and `buildServer` lifecycle wiring gave
+  focused 6/6 passing.
+- [x] TRIANGULATE — zero-project, multi-project aggregate, env override, and failed
+  automatic setup availability cases produced focused 8/8 passing.
+- [x] REFACTOR — pure `aggregateCleanupReports` extraction retained focused 8/8.
+- [x] Verify & bounds — maintainer-approved **639 / 400** logical-line candidate:
+  **142 tracked diff lines + 497 selected untracked route/scheduler/test lines**.
+
+### TDD Cycle Evidence
+
+| Task | Test files | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| PR 12 cleanup endpoints/triggers | `test/cleanup.test.ts`, `src/scheduler.test.ts` | Fastify integration + fake timers | API 38/38 | 6 failures | 6/6 | 8/8 zero/multi-project, env, availability | 8/8 pure aggregation |
+
+### Files changed
+
+- `packages/local-api/src/routes/cleanup.ts` — manual cleanup and latest-status HTTP façade.
+- `packages/local-api/src/scheduler.ts` — startup/periodic triggers, report state,
+  positive-integer `STORIES_CLEANUP_INTERVAL_MINUTES`, and aggregation.
+- `packages/local-api/src/server.ts` — route/scheduler lifecycle wiring.
+- `packages/local-api/test/cleanup.test.ts`, `src/scheduler.test.ts` — integration
+  and fake-timer behavior coverage.
+- `openspec/.../{tasks.md,verify.md,apply-progress.md}` — task state and evidence.
+
+### Test commands run
+
+- `pnpm vitest run packages/local-api/test/cleanup.test.ts packages/local-api/src/scheduler.test.ts` — RED fail 6/6 → GREEN 6/6 → TRIANGULATE 8/8 → REFACTOR/final 8/8.
+- `pnpm --filter @stories/local-api test` — PASS: 7 files / 46 tests.
+- `pnpm test` — PASS: 27 files / 186 tests; 1 expected env-gated skip.
+- `pnpm typecheck` — PASS.
+- `pnpm lint` — initial unused test-double-parameter failure corrected with no
+  behavioral change, then PASS.
+- `git diff --check` — PASS.
+
+### Deviations and workload / PR boundary
+
+- No design deviation: automatic work enumerates `createProjectService(db).listProjects()`
+  and calls existing project-scoped core cleanup. Automatic list/setup/project failures
+  are swallowed so Fastify availability survives; manual failures retain typed errors.
+- The maintainer explicitly authorized a final **639 / 400** logical-line ceiling
+  (**+239**), and the native reset for `pr12-final-639-evidence-reconciliation`
+  records that final authorization. The live candidate is **142 tracked diff lines +
+  497 selected untracked route/scheduler/test lines = 639**.
+- All prior green validation is retained: focused 8/8, local-api 46/46, workspace
+  186 passed / 1 expected env-gated skip, typecheck, lint, and `git diff --check`
+  clean. No code, tests, documentation, or evidence were removed or compressed, and
+  no delivery action occurred: no commit, stage, push, PR, or attempt settlement.
+- PR 12's Verify & bounds row is visibly `[x]`; PR 13+ rows remain untouched.

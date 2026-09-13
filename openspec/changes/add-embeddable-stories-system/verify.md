@@ -628,5 +628,57 @@ removed to reduce review evidence.
 ### Resolution — maintainer-approved final size exception
 
 - The maintainer first approved the 637-line reconciliation, then explicitly authorized a final **651 / 400** ceiling after mandatory evidence was finalized. The current reconciled candidate measures **650 / 400 logical changed lines** (**+250**): **132 tracked diff lines + 518 selected untracked route/test lines**. Native SDD authority records the 651-line ceiling; plain `git diff --numstat` omits untracked files.
-- The route, core history facade, server registration, integration suite, and strict-TDD/OpenSpec evidence are retained as one cohesive unit. No tests, documentation, comments, or behavior were deleted or compressed to force the former cap.
-- The Verify & bounds row is checked. Final validation passed: local-api 38/38, core 80/80, workspace 178 passed / 1 expected env-gated skip, typecheck, lint, and `git diff --check` clean. Candidate is ready for independent verification and native review; no commit, stage, push, or PR action occurred.
+  - The route, core history facade, server registration, integration suite, and strict-TDD/OpenSpec evidence are retained as one cohesive unit. No tests, documentation, comments, or behavior were deleted or compressed to force the former cap.
+  - The Verify & bounds row is checked. Final validation passed: local-api 38/38, core 80/80, workspace 178 passed / 1 expected env-gated skip, typecheck, lint, and `git diff --check` clean. Candidate is ready for independent verification and native review; no commit, stage, push, or PR action occurred.
+
+## PR 12 — `@stories/local-api` cleanup endpoints + triggers (final evidence)
+
+- Branch: `sdd/pr12-cleanup-endpoints`, stacked on PR 11. Scope is exactly the
+  five PR 12 implementation-owned task rows; strict TDD remains recorded below.
+- The parent-authoritative status reports `add-embeddable-stories-system` ready,
+  repo-local workspace authority, `auto-chain` / `stacked-to-main`, and no action
+  context warnings. The maintainer explicitly authorized the final **639 / 400**
+  logical-line ceiling; the native reset for `pr12-final-639-evidence-reconciliation`
+  records that final authorization.
+
+### TDD cycle evidence
+
+| Phase | Command | Result |
+| --- | --- | --- |
+| Safety net | `pnpm --filter @stories/local-api test` | PASS — 5 files / 38 tests before PR 12 changes. |
+| RED | `pnpm vitest run packages/local-api/test/cleanup.test.ts packages/local-api/src/scheduler.test.ts` | FAIL — cleanup routes returned 404; no startup or interval run deleted expired media (6 failures). |
+| GREEN | same focused command | PASS — 2 files / 6 tests after route, scheduler, and `buildServer` lifecycle wiring. |
+| TRIANGULATE | same focused command | PASS — 2 files / 8 tests: no-project zero report, multi-project aggregation, env override, and automatic setup failure availability. |
+| REFACTOR | same focused command | PASS — 2 files / 8 tests after extracting pure `aggregateCleanupReports`. |
+| Verify | prior validation below | PASS — local-api 46/46; workspace 186 passed / 1 expected env-gated skip; typecheck, lint, and whitespace checks clean. |
+
+### Scenario traceability (EMC R1 / AC5 / D1)
+
+| Requirement / scenario | Test evidence |
+| --- | --- |
+| Manual project cleanup returns the core report | `runs cleanup for one project manually...` asserts report, media/poster delete order, and latest status. |
+| Status before a successful report is stable `null` | `returns null before any cleanup run reports successfully`. |
+| Startup cleans all existing projects | `runs all existing projects during server startup...` asserts expired row becomes `cleaned` and report state. |
+| Automatic runs aggregate project reports | `aggregates completed cleanup reports across projects`. |
+| Default and configured intervals | `runs again after the default 60-minute interval` and `uses STORIES_CLEANUP_INTERVAL_MINUTES...`. |
+| Best-effort availability | `attempts and swallows automatic setup failures so Fastify remains available` proves health remains 200. |
+| Zero-project startup result | `publishes a zero aggregate report when startup finds no projects`. |
+
+### Notes and bounds
+
+- `createCleanupScheduler` enumerates `createProjectService(db).listProjects()`
+  and delegates each project to the existing `createCleanupService(...).cleanup()`;
+  no core schema/service or persistence change was added.
+- Automatic list/project/setup failures are swallowed. A zero aggregate becomes
+  latest only after an empty successful enumeration; all-failed setup leaves latest
+  `null`, preserving the status contract without inventing invalid per-story errors.
+- The finalized candidate is exactly **639 / 400 logical changed lines** (**+239**):
+  **142 tracked diff lines + 497 selected untracked route/scheduler/test lines**.
+  The maintainer's final authorization is recorded via the native reset for
+  `pr12-final-639-evidence-reconciliation`.
+  All prior green validation remains valid: focused 8/8, local-api 46/46,
+  workspace 186 passed / 1 expected env-gated skip, typecheck, lint, and
+  `git diff --check` clean.
+- The PR 12 **Verify & bounds** row is checked with this approved accounting. No
+  code, tests, documentation, or evidence were removed or compressed, and no
+  delivery action occurred: no commit, stage, push, PR, or attempt settlement.

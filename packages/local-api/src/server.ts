@@ -14,6 +14,8 @@ import { registerStoryRoutes } from "./routes/stories.js";
 import { registerHealthRoute } from "./routes/health.js";
 import { registerProjectRoutes } from "./routes/projects.js";
 import { registerPublicationRoutes } from "./routes/publication.js";
+import { registerCleanupRoutes } from "./routes/cleanup.js";
+import { createCleanupScheduler } from "./scheduler.js";
 
 const SERVER_DEFAULTS = {
   host: "127.0.0.1",
@@ -114,6 +116,8 @@ export function buildServer(
     logger: { level: "silent", serializers: loggerSerializers },
   });
 
+  const cleanupScheduler = createCleanupScheduler(dependencies);
+
   server.decorate("localApiDependencies", dependencies);
   registerLoopbackGuard(server, port);
   server.addHook("preSerialization", (_request, _reply, payload, done) => {
@@ -129,6 +133,12 @@ export function buildServer(
   registerStoryRoutes(server, dependencies);
   registerStoryEditRoutes(server, dependencies);
   registerPublicationRoutes(server, dependencies);
+  registerCleanupRoutes(server, cleanupScheduler);
+  server.addHook("onReady", () => cleanupScheduler.start());
+  server.addHook("onClose", (_instance, done) => {
+    cleanupScheduler.stop();
+    done();
+  });
 
   return server;
 }
