@@ -1,4 +1,6 @@
 import { AdapterError } from "./errors.js";
+import { asBytes } from "./body-bytes.js";
+import { compareExpectations } from "./verify-expectations.js";
 import type {
   ObjectExpectation,
   ProviderId,
@@ -34,26 +36,6 @@ export interface StoredObjectMetadata {
 export interface FakeStorageAdapter extends StorageAdapter {
   readonly stored: ReadonlyMap<string, StoredObjectMetadata>;
 }
-
-const asBytes = async (body: UploadInput["body"]): Promise<Uint8Array> => {
-  if (body instanceof Uint8Array) return body;
-  const reader = body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  for (;;) {
-    const next = await reader.read();
-    if (next.done) break;
-    chunks.push(next.value);
-    total += next.value.byteLength;
-  }
-  const bytes = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return bytes;
-};
 
 export const createFakeStorageAdapter = (
   options: FakeStorageAdapterOptions,
@@ -110,24 +92,11 @@ export const createFakeStorageAdapter = (
         detail: `object "${key}" does not exist in bucket "${options.bucket}"`,
       };
     }
-    if (expected?.size !== undefined && expected.size !== stored.size) {
-      return {
-        ok: false,
-        code: "VERIFY_MISMATCH",
-        detail: `size mismatch for "${key}": expected ${expected.size}, found ${stored.size}`,
-      };
-    }
-    if (
-      expected?.contentType !== undefined &&
-      expected.contentType !== stored.contentType
-    ) {
-      return {
-        ok: false,
-        code: "VERIFY_MISMATCH",
-        detail: `contentType mismatch for "${key}": expected "${expected.contentType}", found "${stored.contentType}"`,
-      };
-    }
-    return { ok: true, size: stored.size, contentType: stored.contentType };
+    return compareExpectations(
+      key,
+      { size: stored.size, contentType: stored.contentType },
+      expected,
+    );
   };
 
   const publicUrl = (key: string): string =>

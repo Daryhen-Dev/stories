@@ -155,3 +155,107 @@ rewritten or lost.
 - **Recommendation: `size:exception` for PR 2** (or orchestrator-side split of
   the boundary unit + exception on the remainder). No commits made (orchestrator
   owns them). No subagents launched.
+
+## Run 3 — PR 3 Supabase reference adapter + provider simulator (branch `sdd/pr03-supabase-adapter`)
+
+- Date: 2026-09-12 · Store: `openspec` · Strict TDD: active (Vitest)
+- Status consumed: parent-authoritative native status — change
+  `add-embeddable-stories-system`, branch `sdd/pr03-supabase-adapter` stacked on
+  PR 2, apply UNBLOCKED with edit authority for the workspace root (per-change,
+  audited), scope = exactly the 5 `### PR 3` checkboxes, runtime attempt cap 800
+  lines (lockfile margin). PR 1 + PR 2 confirmed intact before starting
+  (`pnpm --filter @stories/manifest-schema test`, existing 20/20 green during RED).
+- Skill resolution: `paths-injected` (`gentle-ai`, `work-unit-commits`).
+
+### Completed tasks (checkboxes persisted in `tasks.md`)
+
+- [x] RED — `src/supabase-adapter.test.ts` (8 failure mappings with remediation,
+      stubbed structural SDK client, no `@supabase` import in tests) +
+      `tools/provider-simulator/index.test.ts` (bytes, mirrored D9 Cache-Control,
+      Range 206); both runners failed on missing modules (evidence in `verify.md`)
+- [x] GREEN — `src/supabase-adapter.ts` (structural SDK seam + one SAFETY-cast
+      default constructor; upload persists `cacheControlSeconds` as SDK
+      cacheControl metadata with D9 header forms; download-based verify;
+      publicUrl from publicBaseUrl; delete; list-probe checkPublicRead) +
+      `src/verify-expectations.ts` + `tools/provider-simulator/index.ts`
+      (static store, metadata, Range/206/416) + env-gated live profile
+      (`describe.skipIf`, `STORIES_E2E_SUPABASE_*`); 31 + 1 skipped / 3/3
+- [x] TRIANGULATE — simulator: 404, content-type passthrough, HEAD-vs-GET
+      consistency, suffix range + 416 (7/7); adapter: UNKNOWN fallback on
+      unmapped probe status and unmapped list error, 404-on-existing →
+      BUCKET_NOT_PUBLIC (34 + 1 skipped)
+- [x] REFACTOR — `src/body-bytes.ts` (`asBytes`) shared by fake + Supabase
+      adapter; `compareExpectations` shared verify plumbing; no SDK types in
+      shared modules; suite re-run against both (34 + 1 skipped / 7/7; fake
+      tests still 20/20)
+- [x] Verify & bounds — workspace `pnpm test` 50 passed + 1 skipped (live
+      profile visible as skipped without env); boundary scan green (MSA R5);
+      root + per-package typecheck clean; lint clean; **budget overage reported
+      honestly (≈1,279 code-facing lines vs 800 cap / 400 budget) with
+      `size:exception` recommendation**; Tier 2 live run deferred (no
+      credentials in this environment — none invented)
+
+### Files changed
+
+- `packages/storage-adapters/src/supabase-adapter.ts` (new, 376) — the ONLY file
+  importing `@supabase/*`; `src/supabase-adapter.test.ts` (new, 431);
+  `src/verify-expectations.ts` (new, 33); `src/body-bytes.ts` (new, 26)
+- `packages/storage-adapters/src/fake-adapter.ts` (−38/+7 — rewired to shared
+  plumbing, behavior unchanged, PR 2 tests untouched and green)
+- `packages/storage-adapters/package.json` (+1 — `@supabase/supabase-js`
+  devDependency; `dependencies` stay zero per the pinned contract invariant)
+- `tools/provider-simulator/` (new package): `index.ts` (157), `index.test.ts`
+  (141), `package.json` (15), `tsconfig.json` (7)
+- `pnpm-workspace.yaml` (+1 — `tools/*` glob was missing) · `pnpm-lock.yaml`
+  (+84 — supabase-js tree + simulator importer)
+- `openspec/.../tasks.md` (only the 5 PR 3 checkboxes flipped),
+  `verify.md` / `apply-progress.md` (this file)
+
+### Test commands run
+
+- `pnpm --filter @stories/storage-adapters test` — RED fail → GREEN 31+1skip →
+  TRIANGULATE 34+1skip → REFACTOR 34+1skip
+- `pnpm --filter @stories/provider-simulator test` — RED fail → GREEN 3/3 →
+  TRIANGULATE 7/7
+- `pnpm test` (workspace) 50 passed + 1 skipped · `pnpm typecheck` (root) clean ·
+  per-package `tsc -p tsconfig.json --noEmit` clean ×2 · `pnpm lint` clean
+  (ESLint `no-restricted-imports` + boundary scanner green)
+
+### Deviations from design/tasks (recorded in `verify.md`)
+
+1. `@supabase/supabase-js` as devDependency — PR 2's pinned zero-runtime-deps
+   contract invariant kept; SDK confined to the reference adapter file (off the
+   pinned index surface).
+2. Structural SDK seam + single SAFETY-cast default constructor (tests stub
+   without importing the SDK; boundary scanner green).
+3. verify via `download` (stable surface) instead of version-fragile metadata
+   endpoints; `upsert: true` on upload for republication.
+4. D9 header helper duplicated in simulator (3 lines) — export from index would
+   break PR 2's pinned export surface; both copies test-pinned to D9 strings.
+5. checkPublicRead probes an existing object via list+GET (Spike A/B); empty
+   bucket → UNKNOWN + remediation.
+6. RED-phase scaffolding (workspace glob, simulator package files, SDK install)
+   landed before the RED run so the filtered runner commands resolve and fail
+   on the missing modules, per task + PR 1 precedent.
+
+### Remaining work
+
+- PR 4 … PR 18 (all unchecked; untouched this run). Tier 2: run the live
+  Supabase profile with operator credentials during apply (`verify.md` notes
+  the exact env names and the empty-bucket probe caveat).
+- Tier 2 apply-phase items (final unchecked section of `tasks.md`).
+
+### Workload / PR boundary
+
+- Authored this slice: 1,186 new-file lines + 93 tracked insertions (−38/+7
+  refactor delta, +1 package.json, +1 workspace, +84 lockfile) ≈ **1,279
+  code-facing lines** — over the 800-line runtime attempt cap and the 400-line
+  review budget.
+- Why it cannot shrink: the 5 checkboxes mandate, as ONE strict-TDD unit across
+  two packages, the failure-mapping test file + adapter + suite registration +
+  simulator + its tests; no deletion-free honest split lands under budget (the
+  only viable split — the simulator package, ≈298 lines — still leaves ≈950).
+- **Recommendation: `size:exception` for PR 3** (or orchestrator-side split of
+  `tools/provider-simulator` into its own chained PR with the same exception on
+  the adapter remainder). No commits made (orchestrator owns them). No
+  subagents launched.
