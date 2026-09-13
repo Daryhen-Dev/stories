@@ -361,3 +361,72 @@ fixes them.
 
 - Authored new files: generate-manifest.test.ts 177, generate-manifest.ts 109, history.ts 103, policy.ts 10, publication-service.test.ts 526, publication-service.ts 254, rollback.ts 83, verify-manifest.ts 93 = **1,355**; tracked deltas: `src/index.ts` +4, `package.json` +1 (storage-adapters workspace dep), `pnpm-lock.yaml` +3 → code-facing authored ≈ **1,363 lines**; plus artifacts (tasks ±10, this section, apply-progress Run 6).
 - **Budget overage reported honestly** vs the operator amendment (≤800/PR): the work unit is generation+publication as ONE strict-TDD unit; the only cohesive split is generation (286) vs publication (1,077) — publication alone still exceeds 800, so no honest two-commit split fits. Nothing was deleted, compressed, or restyled to fit; tests are deliberately the dominant half. **Recommendation: `size:exception` for PR 6** (third after PRs 2–3). Served-header Tier-1 assert lands in PR 15; Tier 2 items stay in the final `tasks.md` section.
+
+## PR 7 — `@stories/core` cleanup service (draft evidence, apply phase)
+
+- Branch: `sdd/pr07-core-cleanup`, stacked on PR 6 commit `b69f252`.
+- Scope: only PR 7’s five implementation-owned checkboxes. Strict TDD active with `pnpm --filter @stories/core test`.
+- Final state: core suite **72/72**; workspace **122 passed, 1 skipped** (the existing env-gated Supabase profile); typecheck, lint, and whitespace validation clean.
+
+### TDD cycle evidence
+
+| Phase | Command | Result |
+| --- | --- | --- |
+| Safety net | `pnpm --filter @stories/core test` | PASS — 8 files, 65/65 existing core tests before edits |
+| RED | `pnpm --filter @stories/core test` | FAIL — `Cannot find module './cleanup-service.js'`; existing 65 tests passed |
+| GREEN | `pnpm --filter @stories/core test` | PASS — 9 files, 70/70 after implementing the factory and initial behavior tests |
+| TRIANGULATE | `pnpm --filter @stories/core test` | PASS — 71/71 after no-poster / pending-failure / exact-count coverage |
+| REFACTOR RED | `pnpm --filter @stories/core test` | FAIL — public `createCleanupService` export absent (`TypeError: ... is not a function`); existing 65 tests passed |
+| REFACTOR GREEN | `pnpm --filter @stories/core test` | PASS — 72/72 after exporting the service from `@stories/core` |
+| Verify | `pnpm test` · `pnpm typecheck` · `pnpm lint` · `git diff --check` | PASS — 122 passed, 1 skipped; TypeScript and ESLint clean; no whitespace errors |
+
+### Scenario traceability (EMC R2–R5; R4 service half)
+
+| Requirement / scenario | Test |
+| --- | --- |
+| Expiry is materialized before selection; successful deletion marks `cleaned`, pins `cleanedAt`, clears errors | `sweeps expiry before selecting stories, cleans successful media, and clears prior errors` |
+| Failure stores `<code>: <detail>` and later expired stories continue | `records typed failures and continues to clean later expired stories` |
+| Poster deletion is required for a cleaned transition | `deletes a poster with its expired story media before marking the story cleaned` and `leaves a story expired when deleting its optional poster fails` |
+| Pending records share the report and successful rows are removed | `sweeps pending-deletion media into the same report and removes successful rows` |
+| Pending failure does not block expired stories; no-poster input and exact report counts | `continues the expired no-poster sweep when a pending deletion fails, with exact mixed counts` |
+| Permanently failing adapter remains best effort | `completes and reports every failure when the adapter always rejects deletion` |
+
+### Notes and bounds
+
+- `createCleanupService(db, makeAdapter)` invokes only explicit `adapter.delete` calls; it adds no lifecycle/TTL surface, provider SDK import, dependency, or network path.
+- Cleanup and publication share the existing `expireStories(db, now)` preamble. No new abstraction was introduced because that common helper already provides the required behavior.
+- Cleanup is scoped to one project per call, constructs an adapter from that project, preserves failed pending-deletion rows, and uses the removed record’s stored `storyId` in report errors.
+- **Final measurement and exception.** The initial 477-line checkpoint is superseded
+  by the final candidate measurement: **634 code-facing lines** (174
+  `cleanup-service.ts` + 459 `cleanup-service.test.ts` + 1 `index.ts` export),
+  excluding OpenSpec evidence. The full candidate against `b69f252` is **+885/−9 =
+  896 logical changed lines** (634 code-facing + 262 OpenSpec-evidence lines). It
+  exceeds the active 800-line runtime attempt cap by 105 lines but is below the
+  1,500-line human review budget currently recorded in `tasks.md`; the operator
+  explicitly authorized a cohesive PR 7 `size:exception`.
+
+### Correction — idempotent partial-deletion retries
+
+`AdapterError` code `OBJECT_NOT_FOUND` from the explicit cleanup `adapter.delete`
+boundary is now treated as success only for that object. Other typed failures and
+unknown failures still propagate to the existing failure accounting. Normal media
+then poster deletion order, the delete-only adapter boundary, and report semantics
+remain unchanged.
+
+| Phase | Command | Result |
+| --- | --- | --- |
+| Safety net | `pnpm --filter @stories/core test` | PASS (exit 0) — 9 files, 72/72 tests before correction edits |
+| RED | `pnpm --filter @stories/core test` | FAIL (exit 1) — 1 file failed / 8 passed; 2 new stateful retry tests failed while 72 existing tests passed. The second run reported `OBJECT_NOT_FOUND` for media and never deleted the poster. |
+| GREEN | `pnpm --filter @stories/core test` | PASS (exit 0) — 9 files, 74/74 tests after `deleteObject` suppressed only typed `OBJECT_NOT_FOUND`. |
+| TRIANGULATE | `pnpm --filter @stories/core test` | PASS (exit 0) — both expired-story and pending-deletion retry paths prove the same rule with different persistence outcomes. |
+| REFACTOR / final core | `pnpm --filter @stories/core test` | PASS (exit 0) — 9 files, 74/74 after first-run media-then-poster order assertions; no further production refactor was needed. |
+| Workspace verification | `pnpm test` · `pnpm typecheck` · `pnpm lint` · `git diff --check` | PASS — 17 files; 124 passed, 1 skipped; root TypeScript clean; ESLint clean; no whitespace errors. |
+
+The stateful fake-adapter scenarios prove that the first run deletes media and
+fails the poster, preserving the expired story or pending row; the later run sees
+missing media, retries/deletes the poster, then marks the story `cleaned` or
+removes the pending row. The correction is included in the final measured PR 7
+candidate: **+896/−9 = 905 logical changed lines** (634 code-facing, 262
+OpenSpec-evidence). The operator explicitly authorized the resulting 105-line
+runtime-cap overage as a cohesive PR 7 `size:exception`; no code or test was
+removed to reduce review evidence.
