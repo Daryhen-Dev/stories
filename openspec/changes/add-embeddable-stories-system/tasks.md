@@ -186,11 +186,11 @@ by the operator's `auto-chain` decision; per-PR budget risk stays Low.
 | Depends on | PR 6 · Branch → PR 6 branch |
 | Bounds | Start: expired rows accumulate forever · Finish: best-effort sweep with per-story outcomes · Verify: `pnpm --filter @stories/core test` · Rollback: revert branch |
 
-- [ ] **RED** Write `src/cleanup/cleanup-service.test.ts`: expiry sweep runs first; expired stories with media selected; success → `cleaned` + `cleanedAt` + error cleared; failure → `lastCleanupError = '<code>: <detail>'` and the job **continues** (mixed-results scenario); poster deleted alongside media; pending-deletion rows swept into the same report; report shape `{ attempted, deleted, failed, errors: [{ storyId, code }] }`; an adapter whose `delete` always fails still completes the job (EMC R4 scenario). All fail. Record evidence. <!-- sdd-owner: implementation -->
-- [ ] **GREEN** Implement `src/cleanup/cleanup-service.ts` (factory `(db, makeAdapter)`; explicit `adapter.delete` calls only — no TTL surface, D1) and the `CleanupReport` type. Tests pass. Record evidence. <!-- sdd-owner: implementation -->
-- [ ] **TRIANGULATE** Story with media but no poster; pending-deletion sweep failure does not block the expired-story pass; report counts match outcomes exactly (3 attempted / 2 deleted / 1 failed scenario). <!-- sdd-owner: implementation -->
-- [ ] **REFACTOR** Share the expire-first preamble with the publication service. <!-- sdd-owner: implementation -->
-- [ ] **Verify & bounds** Suite green; EMC R2/R3/R5 + R4 (service half) scenarios pass; diff ≤400 lines; record evidence. <!-- sdd-owner: implementation -->
+- [x] **RED** Write `src/cleanup/cleanup-service.test.ts`: expiry sweep runs first; expired stories with media selected; success → `cleaned` + `cleanedAt` + error cleared; failure → `lastCleanupError = '<code>: <detail>'` and the job **continues** (mixed-results scenario); poster deleted alongside media; pending-deletion rows swept into the same report; report shape `{ attempted, deleted, failed, errors: [{ storyId, code }] }`; an adapter whose `delete` always fails still completes the job (EMC R4 scenario). All fail. Record evidence. <!-- sdd-owner: implementation -->
+- [x] **GREEN** Implement `src/cleanup/cleanup-service.ts` (factory `(db, makeAdapter)`; explicit `adapter.delete` calls only — no TTL surface, D1) and the `CleanupReport` type. Tests pass. Record evidence. <!-- sdd-owner: implementation -->
+- [x] **TRIANGULATE** Story with media but no poster; pending-deletion sweep failure does not block the expired-story pass; report counts match outcomes exactly (3 attempted / 2 deleted / 1 failed scenario). <!-- sdd-owner: implementation -->
+- [x] **REFACTOR** Share the expire-first preamble with the publication service. <!-- sdd-owner: implementation -->
+- [x] **Verify & bounds** Suite green; EMC R2/R3/R5 + R4 (service half) scenarios pass; diff ≤400 lines; record evidence. <!-- sdd-owner: implementation -->
 
 ### PR 8 — `@stories/local-api`: security backbone + repo secret scan
 

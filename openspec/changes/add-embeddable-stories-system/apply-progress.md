@@ -494,7 +494,191 @@ rewritten or lost.
   history/rollback as ONE strict-TDD unit; the only cohesive commit split is
   generation (286) vs publication (1,077), and publication alone still exceeds
   800 — no honest split fits without deleting tests (forbidden).
-- **Recommendation: `size:exception` for PR 6** (third after PRs 2–3), or an
-  orchestrator-side re-plan that splits the publication unit across a chained
-  pair with the exception recorded. No commits made (orchestrator owns them).
-  No subagents launched.
+  - **Recommendation: `size:exception` for PR 6** (third after PRs 2–3), or an
+      orchestrator-side re-plan that splits the publication unit across a chained
+      pair with the exception recorded. No commits made (orchestrator owns them).
+      No subagents launched.
+
+## Run 7 — PR 7 `@stories/core` cleanup service (branch `sdd/pr07-core-cleanup`)
+
+- Date: 2026-09-12 · Store: `openspec` · Strict TDD: active (Vitest).
+- Status consumed: parent-authoritative — change `add-embeddable-stories-system`,
+  `applyState: ready`, repo-local workspace `/home/daryhen/Documents/proyects/stories`,
+  assigned work unit `pr07-core-cleanup` stacked on PR 6 commit `b69f252`, and only
+  the five PR 7 implementation-owned checkboxes. Delivery is `auto-chain` /
+  `stacked-to-main`; parent has runtime-attempt authority (max 3; max 800 changed
+  lines). No attempt-ledger, branch, commit, or PR action was taken.
+- Action-context warning: none. All edits remain inside the parent-authorized roots
+  and user-specified PR 7 edit surfaces.
+- Skill resolution: `paths-injected` (`gentle-ai`, `work-unit-commits`).
+
+### Completed tasks (checkboxes persisted in `tasks.md`)
+
+- [x] RED — `cleanup-service.test.ts` referenced the absent module; the required
+      core command failed only on `Cannot find module './cleanup-service.js'` while
+      the pre-existing 65 tests stayed green.
+- [x] GREEN — `cleanup-service.ts` implemented `createCleanupService(db,
+      makeAdapter)`, explicit `adapter.delete` calls, `CleanupReport`, expiry-first
+      selection, per-story updates, and pending-deletion cleanup; 70/70 core tests.
+- [x] TRIANGULATE — no-poster, pending-failure/non-blocking, exact
+      `3 attempted / 2 deleted / 1 failed`, poster-failure, and always-failing
+      adapter coverage; 71/71 core tests.
+- [x] REFACTOR — cleanup reuses `expireStories(db, now)`, the same helper used by
+      publication, and is exported from the core package; export RED then 72/72
+      GREEN confirmed behavior.
+- [x] Verify & bounds — full verification passed; all five PR 7 persisted task rows
+      are visibly `[x]`; details are in `verify.md`.
+
+### TDD Cycle Evidence
+
+| Task | Test file | Layer | Safety Net | RED | GREEN | TRIANGULATE | REFACTOR |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| PR 7 cleanup service | `packages/core/src/cleanup/cleanup-service.test.ts` | Unit with in-memory SQLite and a contract-shaped adapter | 65/65 core | Missing module; 65 prior pass | 70/70 | 71/71 mixed/no-poster/pending failure | Export RED then 72/72; shared `expireStories` retained |
+
+### Files changed
+
+- `packages/core/src/cleanup/cleanup-service.ts` (new) — best-effort project
+  cleanup factory and report types.
+- `packages/core/src/cleanup/cleanup-service.test.ts` (new) — seven behavior tests
+  covering EMC R2–R5 and the EMC R4 service half.
+- `packages/core/src/index.ts` — public cleanup-service export.
+- `openspec/changes/add-embeddable-stories-system/tasks.md` — only PR 7’s five
+  implementation checkboxes set `[x]`.
+- `openspec/changes/add-embeddable-stories-system/verify.md` — PR 7 strict-TDD and
+  verification evidence appended.
+- `openspec/changes/add-embeddable-stories-system/apply-progress.md` — this
+  cumulative run entry.
+
+### Test commands run
+
+- `pnpm --filter @stories/core test` — safety net PASS 65/65; RED FAIL (missing
+  cleanup module, prior 65 pass); GREEN PASS 70/70; TRIANGULATE PASS 71/71;
+  REFACTOR export RED FAIL; REFACTOR GREEN PASS 72/72.
+- `pnpm test` — PASS: 17 files, 122 passed, 1 skipped (existing env-gated live
+  Supabase profile).
+- `pnpm typecheck` — PASS: root `tsc -p tsconfig.base.json` clean.
+- `pnpm lint` — PASS: `eslint .` clean.
+- `git diff --check` — PASS: no whitespace errors.
+
+### Deviations from design
+
+- None. The service uses existing `expireStories` as the shared expire-first
+  preamble with publication, so no scope-expanded shared abstraction was needed.
+
+### Remaining tasks
+
+- None in the assigned PR 7 scope; all five PR 7 implementation-owned rows are
+  complete and persisted as `[x]`.
+- PR 8–18 implementation rows and the five final Tier 2 rows remain unchecked and
+  are out of this PR 7 boundary.
+
+### Workload / PR boundary
+
+- The initial 477-line checkpoint was a provisional estimate. Final measurement
+  supersedes it: **634 code-facing lines** (174 `cleanup-service.ts`, 459 test
+  lines, 1 index export), excluding OpenSpec evidence.
+- The strict-TDD test surface and implementation are one cohesive cleanup-service
+  work unit. No code, tests, comments, or docs were deleted or compressed. Parent
+  handles any size-exception settlement; this executor made no delivery action.
+
+### PR 7 correction — idempotent partial-deletion retries
+
+- Status consumed: parent-authoritative `add-embeddable-stories-system` status,
+  `applyState: ready`, `repo-local` action context, workspace root authorized;
+  scope restricted to the active PR 7 work unit. Action-context warnings: none.
+  No branch, commit, push, review, dependency, PR 8+, or attempt-ledger action
+  was taken.
+- Strict-TDD safety net: `pnpm --filter @stories/core test` passed (exit 0), 9
+  files / 72 tests before edits.
+- RED: two stateful fake-adapter tests were added for an expired story and a
+  pending-deletion row. `pnpm --filter @stories/core test` failed (exit 1): 1
+  file failed / 8 passed; 2 new assertions failed while 72 existing tests passed.
+  On the second cleanup run, the fake threw `AdapterError(OBJECT_NOT_FOUND)` for
+  already-deleted media, so the poster was not retried.
+- GREEN: cleanup now routes each explicit delete through `deleteObject`, which
+  suppresses only `AdapterError` code `OBJECT_NOT_FOUND`; it rethrows all other
+  typed and unknown failures. `pnpm --filter @stories/core test` passed (exit 0),
+  9 files / 74 tests.
+- TRIANGULATE / refactor: the two record types prove distinct persistence results
+  (story becomes `cleaned`; pending row is removed), and first-run assertions pin
+  media-then-poster deletion order. Final core run passed (exit 0), 9 files / 74
+  tests. No additional production refactor was needed.
+- Final verification: `pnpm test` PASS (exit 0), 17 files / 124 passed / 1
+  skipped; `pnpm typecheck` PASS (exit 0); `pnpm lint` PASS (exit 0);
+  `git diff --check` PASS (exit 0, no output).
+- Persisted task state: `tasks.md` was intentionally unchanged because all five
+  PR 7 implementation-owned rows were already truthfully `[x]`; it was re-read
+  and confirmed before return. The cumulative Run 7 section retains the exact
+  unchecked rows outside this PR 7 correction scope.
+- Files changed by this correction: `packages/core/src/cleanup/cleanup-service.ts`
+  and `packages/core/src/cleanup/cleanup-service.test.ts`, plus this cumulative
+  progress record and the PR 7 verification record. No design deviation.
+- Final measured PR 7 candidate against `b69f252`: **+896/−9 = 905 logical
+  changed lines** — 634 code-facing lines and 262 OpenSpec-evidence lines. This
+  exceeds the active runtime attempt cap of 800 by 105 lines, but remains below the
+  1,500-line human review budget in `tasks.md`. The operator explicitly approved
+  a `size:exception` for this cohesive PR 7 unit; the delivery boundary remains
+  PR 7 and no delivery action was taken.
+
+### Exact persisted unchecked rows outside PR 7
+
+- [ ] **RED** Write `src/server.test.ts`: binds `127.0.0.1:3789` and honors `STORIES_API_PORT`; foreign `Host` header → `403` before handlers; foreign `Origin` → `403`; responses carry **no** CORS headers (D6); a global `preSerialization` hook replaces values of credential-like keys (`/(credential|secret|token|api.?key|service.?role)/i`) with `"[REDACTED]"` in any serialized payload (D8); logger serializers redact `authorization`/`cookie`; `GET /api/health` → 200. Write `tests/boundary/secret-scan.test.ts` (scanner unit-tested on a synthetic file list, then run on the tracked tree with a fixture secret declared only inside the test file — PM R2 scenario). All fail. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **GREEN** Implement `src/server.ts` (`buildServer({ db, makeAdapter })` factory), `src/plugins/loopback-guard.ts` (Host allowlist `127.0.0.1:<port>` / `localhost:<port>` / `[::1]:<port>` + Origin allowlist), `src/plugins/redact.ts`, logger serializers, `src/routes/health.ts`; scanner passes on the real tree (`.env*` git-ignored per bootstrap). Tests pass. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **TRIANGULATE** Host `[::1]:3789` accepted; IPv6-mapped forms rejected; redaction hits nested objects and arrays; port override reflected in the allowlist. <!-- sdd-owner: implementation -->
+- [ ] **REFACTOR** Collapse guard checks into one `onRequest` hook with typed 403 payloads. <!-- sdd-owner: implementation -->
+- [ ] **Verify & bounds** Suites green; PM R5 scenarios + PM R2 repo-scan scenario pass; diff ≤400 lines; record evidence. <!-- sdd-owner: implementation -->
+- [ ] **RED** Write `packages/core/src/domain/project-service.test.ts` (create/list/update/delete; DTOs omit credential columns; delete cascades — PM R1 scenarios) and `packages/local-api/test/projects.test.ts`: CRUD via HTTP with redacted responses; **every** GET endpoint scanned for a fixture secret (PM R2 scenario); `POST /api/projects/:id/connection-test` runs the adapter `checkPublicRead` from Node, stores the result on `projects.lastConnectionCheck`, responds `browserPending: true`; bad credentials diagnose auth-class, never `cors` (PM R3 scenario); `POST /api/projects/:id/cors-check` stores the panel result and diagnoses `cors` when the node probe passed but the browser fetch was rejected; ranged-probe failure reports the video-seeking diagnosis (PM R4 scenarios); invalid payloads → typed 400; unknown id → 404. All fail. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **GREEN** Implement `src/domain/project-service.ts`, `src/routes/projects.ts`, `src/routes/connection-test.ts`, `src/routes/cors-check.ts`, `src/domain/cors-diagnosis.ts` (per-provider remediation strings from `spike-findings.md`). Tests pass. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **TRIANGULATE** Redaction hook catches a deliberately mis-mapped DTO field (defense in depth); connection-test overwrites previous results; diagnosis precedence network/auth/bucket before cors. <!-- sdd-owner: implementation -->
+- [ ] **REFACTOR** Factor shared Zod request schemas; keep provider types out of routes (contract only). <!-- sdd-owner: implementation -->
+- [ ] **Verify & bounds** Suites green; PM R1–R4 scenarios pass; diff ≤400 lines; record evidence. <!-- sdd-owner: implementation -->
+- [ ] **RED** Write `packages/local-api/test/stories.test.ts`: multipart creation streams the media part end-to-end (fake adapter captures a stream + `contentLength`; no full-file buffering); Zod parses fields **before** the stream is consumed (invalid `expiresAt` → typed 400 and `adapter.upload` never called — SL R1 scenario); oversized part → `413` typed payload with no story row (limit configured small in test; SL R2 scenario); creation inserts status `published` and triggers a project publish automatically (manifest bytes change without a second call — Q2); `PATCH /api/stories/:id` re-validates the window; `DELETE /api/stories/:id` removes the row + pending-deletion record (SL R7); poster part optional and stored (`posterKey`). All fail. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **GREEN** Implement `src/routes/stories.ts` (multipart handler: parse fields → size guard `min(part, STORIES_MAX_UPLOAD_MB)` → stream into `adapter.upload` → `adapter.verify(key, { size, contentType })` → insert → auto-publish via the PR 6 service), `src/routes/story-edit.ts`. Tests pass. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **TRIANGULATE** Video with `durationSeconds` field; upload-failure surfaces the typed `AdapterError` code and creates no row; publish trigger failure still records the story (local truth) and reports the publish failure separately. <!-- sdd-owner: implementation -->
+- [ ] **REFACTOR** Extract the field-first validation guard into a reusable multipart helper. <!-- sdd-owner: implementation -->
+- [ ] **Verify & bounds** Suites green; SL R1/R2/R7 + MP R4 (creation path) scenarios pass; diff ≤400 lines; record evidence. <!-- sdd-owner: implementation -->
+- [ ] **RED** Write `packages/local-api/test/publication.test.ts`: `POST /api/projects/:id/publish` runs the flow and returns success + manifest URL; failure returns the typed `AdapterError` code/detail payload (AC3 panel surfacing); `POST /api/projects/:id/rollback` republishes the latest successful bytes verbatim; `GET /api/projects/:id/publish-history` lists ≤50 rows newest-first with results; unknown project → 404. All fail. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **GREEN** Implement `src/routes/publication.ts` wiring the PR 6 services with Zod-validated params. Tests pass. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **TRIANGULATE** Rollback with no successful history row → typed error; history reflects a failed publication without changing the manifest. <!-- sdd-owner: implementation -->
+- [ ] **REFACTOR** — (thin slice; confirm route/error shapes match PR 10 conventions). <!-- sdd-owner: implementation -->
+- [ ] **Verify & bounds** Suite green; MP R4/R5 endpoint scenarios pass; diff ≤400 lines; record evidence. <!-- sdd-owner: implementation -->
+- [ ] **RED** Write `packages/local-api/test/cleanup.test.ts` + `src/scheduler.test.ts` (fake timers): `POST /api/projects/:id/cleanup` runs the project job and returns the report; `GET /api/cleanup/status` returns the latest report; server startup runs the job without operator action (expired rows deleted via fake adapter); the 60-min interval fires and is configurable (EMC R1 scenarios). All fail. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **GREEN** Implement `src/routes/cleanup.ts` and `src/scheduler.ts` wired into `buildServer` startup. Tests pass. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **TRIANGULATE** Startup cleanup failure does not prevent the server from listening (best-effort, D1); interval override via env. <!-- sdd-owner: implementation -->
+- [ ] **REFACTOR** Unify trigger → service → report plumbing in one module. <!-- sdd-owner: implementation -->
+- [ ] **Verify & bounds** Suite green; EMC R1 scenarios pass; diff ≤400 lines; record evidence. <!-- sdd-owner: implementation -->
+- [ ] **RED** Write `src/stories-viewer.test.ts`: fetch + parse via `manifestSchemaV1` (mocked fetch); unknown `version` → console warning + renders nothing, never guesses (SEV R4 scenario); expiry filter by client clock with `vi.setSystemTime` — expired-at-or-before filtered, valid kept, re-checked on each `next()` so a mid-session expiry drops out (SEV R2 scenarios); displayed order equals manifest array order — no re-sort (SEV R3 scenario); `src/registration.test.ts`: module import without `window` registers nothing; `defineStoriesViewer()` registers explicitly; `/register` entry side-effects only in a browser-like env (SEV R6 client-only scenario). All fail. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **GREEN** Implement `src/stories-viewer.ts` (Lit `<stories-viewer manifest-url="…">` core: load → parse → filter → hold), `src/manifest-loader.ts`, `src/registration.ts`, `src/index.ts`, `src/register.ts`. Tests pass. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **TRIANGULATE** Malformed payload → warning + empty render; poster present/absent surfaced to the render model; refetch on attribute change. <!-- sdd-owner: implementation -->
+- [ ] **REFACTOR** Split parse/filter into a pure module consumed by the element (kept SSR-free by construction). <!-- sdd-owner: implementation -->
+- [ ] **Verify & bounds** Suite green; SEV R2/R3/R4 + R6 (client-only) scenarios pass; diff ≤400 lines; record evidence. <!-- sdd-owner: implementation -->
+- [ ] **RED** Write `src/viewer-ux.test.ts` (jsdom): per-story progress bars; prev/next via tap zones and arrow keys; pause on pointer-hold; photo renders, video renders with `posterUrl` and media-only fallback when absent (SEV R1 scenarios); `src/refresh.test.ts`: re-fetch when the tab becomes visible if last fetch >60 s, no re-fetch under 60 s (SEV R5 scenarios); `src/bundle-size.test.ts` (runs post-build): `dist/stories-viewer.iife.js` exists and gzipped size ≤50 KB. All fail. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **GREEN** Implement the viewer template/styles (full-screen, zero external assets), `vite.config.ts` dual build (ESM `dist/index.js` + types; IIFE `dist/stories-viewer.iife.js` with Lit + Zod + styles inlined), `/register` side-effect entry in the npm build. Tests + build pass; size budget met. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **TRIANGULATE** Story expiring mid-session skipped on next navigation (UI level); keyboard focus handling; `posterUrl` absent → no error and no broken image. <!-- sdd-owner: implementation -->
+- [ ] **REFACTOR** Deduplicate progress-bar timing logic; assert no SSR code path in the bundle (string scan test). <!-- sdd-owner: implementation -->
+- [ ] **Verify & bounds** Tests + build green; SEV R1/R5/R6 scenarios pass; IIFE ≤50 KB gzipped; diff ≤400 lines; record evidence. <!-- sdd-owner: implementation -->
+- [ ] **RED/STRUCTURE** Scaffold `apps/demo-astro` (static page: `<script defer src="…/stories-viewer.iife.js">` + `<stories-viewer manifest-url>`) and `apps/demo-next` (`dynamic(() => import('@stories/stories-embed/register'), { ssr: false })`); add `e2e/helpers/simulator-adapter.ts` (contract-backed adapter writing into the provider simulator) and `playwright.config.ts` web-server orchestration: provider simulator + local-api (wired to it) + both demos. Write `e2e/smoke.spec.ts`: plain HTML page + both demos render photo and video, viewer opens and navigates (SEV R7 scenarios); published manifest served by the simulator carries `Cache-Control: public, max-age=60` (MP R6 integration assert). Specs fail before demos exist. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **GREEN** Make the smokes pass: demos build and render against the simulator manifest. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **RED→GREEN (PC-off)** Add `e2e/pc-off.spec.ts`: publish via the API → **stop local-api** → load a demo → site still lists and renders published non-expired stories from the provider (simulator) alone (AC10 / MP R7 / SEV R7 PC-off scenario). Spec fails until orchestration stops the API correctly; then passes. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **TRIANGULATE** Smokes assert video playback starts and navigation reaches both stories in each framework (AC9). <!-- sdd-owner: implementation -->
+- [ ] **Verify & bounds** `pnpm e2e` green; SEV R7 + MP R6/R7 + AC9/AC10 Tier-1 proofs recorded in `verify.md`; diff ≤400 lines (generated lockfiles excluded from the count per one honest-slicing note if needed); record evidence. <!-- sdd-owner: implementation -->
+- [ ] **RED** Write `src/lib/connection-probe.test.ts` (browser probes: plain `fetch(publicManifestUrl)` + ranged `fetch(mediaUrl, { headers: { Range: 'bytes=0-1023' } })`; rejected fetch + passing node probe ⇒ diagnosis `cors`; range failure ⇒ video-seeking diagnosis) and `src/pages/projects.test.ts` (create/edit forms with validation errors surfaced; list shows non-secret fields only; delete confirms and cascades; connection-test flow: call node probe → run browser probes → POST `cors-check` → render stored diagnosis + per-provider remediation steps on failure). All fail. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **GREEN** Implement the app shell + routes, `src/api-client.ts` (typed, loopback same-origin via Vite proxy), `src/pages/projects/*`, `src/lib/connection-probe.ts`, remediation rendering. Tests pass. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **TRIANGULATE** Form blocks submission on invalid expiry/credentials shapes; diagnosis `network`/`auth` renders non-CORS remediation; credentials never displayed or present in client state (AC8). <!-- sdd-owner: implementation -->
+- [ ] **REFACTOR** Extract shared form-field components. <!-- sdd-owner: implementation -->
+- [ ] **Verify & bounds** Suite green; PM R4 browser-side scenarios pass in jsdom (real-origin confirmation is Tier 2); diff ≤400 lines; record evidence. <!-- sdd-owner: implementation -->
+- [ ] **RED** Write `src/lib/poster-capture.test.ts` (object-URL `<video>` mocked: seek target `min(0.1s, duration / 2)`; canvas capped at 720 px long edge; JPEG quality 0.8; capture failure or 3 s timeout omits the poster part and submission proceeds — SL R6 scenarios) and `src/pages/story-editor.test.ts` (file pre-check blocks submission over `STORIES_MAX_UPLOAD_MB` and shows the current limit — SL R2 scenario; expiry-window API errors mapped to visible UI errors naming the 24 h–30 d rule — SL R3/AC7; submit builds multipart with type/expiresAt/position/durationSeconds + optional poster). All fail. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **GREEN** Implement `src/pages/story-editor/*` and `src/lib/poster-capture.ts` (non-blocking: capture runs concurrently with input; never gates publish). Tests pass. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **TRIANGULATE** Capture timeout race (resolve after submit started) leaves the story intact without poster; oversized selection after a valid one re-blocks; position field editable. <!-- sdd-owner: implementation -->
+- [ ] **REFACTOR** Share the limit constant source (API-provided config) instead of duplicating 200 MB. <!-- sdd-owner: implementation -->
+- [ ] **Verify & bounds** Suite green; SL R2/R3/R6 UI scenarios pass; diff ≤400 lines; record evidence. <!-- sdd-owner: implementation -->
+- [ ] **RED** Write `src/pages/publish.test.ts` (publish button triggers `POST /publish`; success surfaces the manifest URL; failure surfaces the typed error code/detail — AC3; history list renders results; rollback action republishes with confirmation) and `src/pages/cleanup.test.ts` (cleanup status view renders the latest `CleanupReport` counts and per-story errors — AC5/EMC R3; manual cleanup button; help surface states that expired media may remain reachable by direct URL until the next successful run — EMC R4 operator-visibility scenario). All fail. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **GREEN** Implement `src/pages/publish/*` and `src/pages/cleanup/*` including the residual-window help text. Tests pass. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **TRIANGULATE** Failed publish leaves the previous manifest notice shown; report with zero expired stories renders an empty state; rollback disabled without a successful history row. <!-- sdd-owner: implementation -->
+- [ ] **REFACTOR** Share result/error banner components with PR 16/17 pages. <!-- sdd-owner: implementation -->
+- [ ] **Verify & bounds** Panel suite + full `pnpm e2e` green (whole chain integrated); EMC R4 + MP R5 UI scenarios pass; diff ≤400 lines; record evidence; flag the change ready for the apply-phase Tier 2 list below. <!-- sdd-owner: implementation -->
+- [ ] Run the env-gated live contract profile (`STORIES_E2E_SUPABASE_*`) — MSA R4 live scenario, AC6. <!-- sdd-owner: implementation -->
+- [ ] Execute the PC-off scenario end-to-end against the real bucket: publish → stop local-api → demo site renders (AC1, AC10, MP R7). <!-- sdd-owner: implementation -->
+- [ ] `curl -I` the real manifest URL and assert `Cache-Control: public, max-age=60` (AC4, MP R6). <!-- sdd-owner: implementation -->
+- [ ] Confirm hosted CORS from a real site origin: plain GET + ranged video request (Spike B open item; PM R4). <!-- sdd-owner: implementation -->
+  - [ ] After a story's `expiresAt` passes, re-fetch the real manifest and confirm exclusion (AC2 live half). <!-- sdd-owner: implementation -->
