@@ -4,3 +4,7 @@ export * from "./domain/expire-stories.js";
 export * from "./domain/expiry-window.js";
 export * from "./domain/ordering.js";
 export * from "./domain/story-service.js";
+export * from "./publication/generate-manifest.js";
+export * from "./publication/policy.js";
+export * from "./publication/publication-service.js";
+export * from "./publication/rollback.js";

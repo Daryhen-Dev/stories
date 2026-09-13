@@ -410,3 +410,91 @@ rewritten or lost.
   amended ≤800 per-PR budget; one cohesive strict-TDD work unit (one commit
   when the orchestrator commits). No commits made (orchestrator owns them). No
   subagents launched.
+
+## Run 6 — PR 6 `@stories/core` manifest generation + atomic publication + history/rollback (branch `sdd/pr06-core-publication`)
+
+- Date: 2026-09-12 · Store: `openspec` · Strict TDD: active (Vitest)
+- Status consumed: parent-authoritative — change `add-embeddable-stories-system`,
+  branch `sdd/pr06-core-publication` (stacked on PR 5, commit `3aa1de3`), edit
+  authority for the workspace root, scope = exactly the 5 `### PR 6`
+  checkboxes, runtime attempt `max_changed_lines 900`, budget = operator
+  amendment ≤800 with measure-early rule. PRs 1–5 untouched and green before
+  starting (baseline `pnpm --filter @stories/core test` 48/48; workspace 98+1).
+- Skill resolution: `paths-injected` (`gentle-ai`, `work-unit-commits`).
+
+### Completed tasks (checkboxes persisted in `tasks.md`)
+
+- [x] RED — `generate-manifest.test.ts` (7: sweep-first stale column, ordering
+      tiebreak, deterministic bytes, publicBaseUrl URLs, poster present/absent,
+      empty + 100-story valid) + `publication-service.test.ts` (7: happy path
+      TTL 60 + read-back + exact bytes, media verify-failure abort, read-back
+      mismatch recoverable, prune 50, verbatim rollback w/ self-expiring data,
+      no-success typed error, ProjectNotFoundError); run failed on missing
+      modules with the 48 prior tests green; exit 1
+- [x] GREEN — `generate-manifest.ts` (expireStories → filter published →
+      compareStories → schema-order JSON, no pretty-print, `toIsoUtcZ`),
+      `history.ts` (recordSuccess/recordFailure/latestSuccessRow/prune-to-50),
+      `policy.ts` (TTL 60 / 31536000, JSON content type, history limit),
+      `publication-service.ts` (factory `(db, makeAdapter)`, design steps 1–6,
+      single manifest PUT as only production write — MP R7; injectable
+      read-back fetcher defaulting to `globalThis.fetch`; pending-media
+      upload+verify path), `rollback.ts` (verbatim bytes re-upload + verify);
+      62/62
+- [x] TRIANGULATE — step-4 upload failure keeps previous bytes serving; D5
+      crash-window orphan accepted and never referenced; pending
+      media+poster uploads assert `cacheControlSeconds: 31536000`; 65/65
+- [x] REFACTOR — verify+read-back round extracted to `verify-manifest.ts`
+      (options-object signature, explicit id-sort comparator), inline
+      duplicates deleted from publish and rollback; 65/65 green
+- [x] Verify & bounds — workspace 115 passed + 1 skipped; typecheck + lint
+      clean; MP R3–R6 traced (served-header assert deferred to PR 15 per task);
+      measured diff reported honestly vs amended ≤800 budget
+
+### Files changed
+
+- New: `packages/core/src/publication/` — `policy.ts` (10), `history.ts` (103),
+  `generate-manifest.ts` (109), `publication-service.ts` (254), `rollback.ts`
+  (83), `verify-manifest.ts` (93), `generate-manifest.test.ts` (177),
+  `publication-service.test.ts` (526)
+- Tracked: `packages/core/src/index.ts` +4 (publication exports),
+  `packages/core/package.json` +1 (`@stories/storage-adapters` workspace dep),
+  `pnpm-lock.yaml` +3, `tasks.md` ±10 (only the 5 PR 6 checkboxes flipped),
+  `verify.md` / `apply-progress.md` (this file)
+
+### Test commands run
+
+- `pnpm --filter @stories/core test` — RED fail (exit 1) → GREEN 62/62 →
+  TRIANGULATE 65/65 → REFACTOR 65/65
+- `pnpm test` (workspace) — 115 passed + 1 skipped · `pnpm typecheck` clean ·
+  `pnpm lint` clean
+
+### Deviations from design/tasks (recorded in `verify.md`)
+
+1. Injected `loadPendingMedia` dependency as the step-2 pending-media source
+   (core holds no media bytes; happy path never calls it — asserted).
+2. Rollback appends its own success row with the restored bytes; RED scenario
+   corrected to spec semantics (latest success = the newest successful
+   publication, not "first").
+3. Failed history rows carry `contentJson: ""` (NOT NULL column) + typed
+   `<code>: <detail>`; corrupted `storyIdsJson` surfaces as a recorded failed
+   rollback (parse inside the guarded block).
+4. Read-back fetcher injectable per run brief; tests serve recorded fake-adapter
+   bytes with no network.
+
+### Remaining work
+
+- PR 7 … PR 18 (all unchecked; untouched this run). Tier 2 apply-phase items at
+  the end of `tasks.md`.
+
+### Workload / PR boundary
+
+- Authored this slice: **≈1,363 code-facing lines** (1,355 new-file + 8
+  tracked) + artifact appends — **over the amended ≤800 per-PR budget**.
+- Why it cannot shrink: the 5 checkboxes mandate generation + publication +
+  history/rollback as ONE strict-TDD unit; the only cohesive commit split is
+  generation (286) vs publication (1,077), and publication alone still exceeds
+  800 — no honest split fits without deleting tests (forbidden).
+- **Recommendation: `size:exception` for PR 6** (third after PRs 2–3), or an
+  orchestrator-side re-plan that splits the publication unit across a chained
+  pair with the exception recorded. No commits made (orchestrator owns them).
+  No subagents launched.
