@@ -332,3 +332,81 @@ rewritten or lost.
   drizzle-kit snapshot 376, init SQL 53, journal 12) counted separately.
   One work unit → one commit when the orchestrator commits; no commits made
   (orchestrator owns them). No subagents launched.
+
+## Run 5 — PR 5 `@stories/core` story domain service (branch `sdd/pr05-core-story-domain`)
+
+- Date: 2026-09-12 · Store: `openspec` · Strict TDD: active (Vitest)
+- Status consumed: parent-authoritative — change `add-embeddable-stories-system`,
+  branch `sdd/pr05-core-story-domain` (stacked on PR 4, commit `4f4ebef`), edit
+  authority for the workspace root (per-change, audited), scope = exactly the 5
+  `### PR 5` checkboxes, runtime attempt cap 700 lines, budget = operator
+  amendment ≤800 (Conventions, `tasks.md`). PRs 1–4 untouched and green before
+  starting (baseline `pnpm --filter @stories/core test` 12/12).
+- Skill resolution: `paths-injected` (`gentle-ai`, `work-unit-commits`).
+
+### Completed tasks (checkboxes persisted in `tasks.md`)
+
+- [x] RED — `expiry-window.test.ts` (14), `ordering.test.ts` (4),
+      `story-service.test.ts` (16) written; run failed on the 3 missing modules
+      under test while PR 4's 12 tests stayed green; exit 1
+- [x] GREEN — `expiry-window.ts` (`expiryWindowSchema` composing `isoUtc` +
+      inclusive 24 h–30 d refinement; `isWithinExpiryWindow` pure predicate),
+      `ordering.ts` (`compareStories`: position asc / createdAt desc),
+      `story-service.ts` (`createStoryService` factory: create/update/
+      listStories/removeStory; transactional remove); sync-driver transaction
+      fix surfaced by the SL R7 test; 45/45
+- [x] TRIANGULATE — no-poster removal records only the media key; DROP TABLE
+      forces the pending-deletion insert to fail → transaction rolls the story
+      delete back, row intact; 47/47
+- [x] REFACTOR — parity pin: 8 boundary offsets produce identical create/edit
+      outcomes (single shared `expiryWindowSchema` definition); `accepts()`
+      helper extracted; 48/48
+- [x] Verify & bounds — workspace 98 passed + 1 skipped (PRs 1–4 suites
+      unchanged); typecheck + lint clean; authored ≈688 code-facing lines vs
+      700 cap / amended ≤800 budget
+
+### Files changed
+
+- New: `packages/core/src/domain/expiry-window.ts` (36), `expiry-window.test.ts`
+  (103), `ordering.ts` (14), `ordering.test.ts` (39), `story-service.ts` (164),
+  `story-service.test.ts` (324)
+- Tracked: `packages/core/src/index.ts` +3 (domain exports),
+  `packages/core/package.json` +2/−1 (`zod ^4.6.2` — already pinned by
+  manifest-schema; not new to the repo), `pnpm-lock.yaml` +3 (importer entry),
+  `tasks.md` ±10 (only the 5 PR 5 checkboxes flipped),
+  `verify.md` / `apply-progress.md` (this file)
+
+### Test commands run
+
+- `pnpm --filter @stories/core test` — RED fail (exit 1) → GREEN 45/45 →
+  TRIANGULATE 47/47 → REFACTOR 48/48
+- `pnpm test` (workspace) — 98 passed + 1 skipped · `pnpm typecheck` clean ·
+  `pnpm lint` clean
+
+### Deviations from design/tasks (recorded in `verify.md`)
+
+1. `zod` declared in core's dependencies (SL R3 mandates a Zod refinement;
+   service schemas compose it; same version pinned by manifest-schema; UTC
+   shape reused via `isoUtc`, D3).
+2. better-sqlite3 transactions are sync — `removeStory` uses `.get()`/`.run()`
+   inside `db.transaction` after the first GREEN run failed with
+   `Transaction function cannot return a promise`.
+3. `SAFETY:` cast on createStory's `.returning()` (noUncheckedIndexedAccess vs
+   insert-without-WHERE always returning the row).
+4. `StoryNotFoundError` typed early for PR 10's 404 mapping (pinned in tests);
+   unknown-project FK errors left raw pending PRs 9–10.
+5. Stale-`published` expiry (SL R4 second scenario) deliberately left to PR 6's
+   sweep-first generation, per the task text.
+
+### Remaining work
+
+- PR 6 … PR 18 (all unchecked; untouched this run). Tier 2 apply-phase items at
+  the end of `tasks.md`.
+
+### Workload / PR boundary
+
+- Authored this slice: **≈688 code-facing lines** (680 new-file lines + 3 index
+  - 5 package/lockfile) — inside the 700-line runtime attempt cap and the
+  amended ≤800 per-PR budget; one cohesive strict-TDD work unit (one commit
+  when the orchestrator commits). No commits made (orchestrator owns them). No
+  subagents launched.

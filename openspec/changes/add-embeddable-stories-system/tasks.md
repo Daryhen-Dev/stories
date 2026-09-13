@@ -154,11 +154,11 @@ by the operator's `auto-chain` decision; per-PR budget risk stays Low.
 | Depends on | PR 4 · Branch → PR 4 branch |
 | Bounds | Start: tables without domain rules · Finish: story records follow window/ordering/removal rules · Verify: `pnpm --filter @stories/core test` · Rollback: revert branch |
 
-- [ ] **RED** Write `src/domain/expiry-window.test.ts` (12 h and 45 d rejected; exactly 24 h and exactly 30 d accepted — SL R3 boundary scenario; non-UTC input rejected), `src/domain/story-service.test.ts` (create inserts app-generated UUID with status `published`; update edits `expiresAt`/`position` re-validating the window; ordering comparator: `position` asc, `createdAt` desc tiebreak — SL R5 scenarios; remove deletes the row and writes `storyMediaPendingDeletion` with media+poster keys **in the same transaction** — SL R7 scenario), `src/domain/ordering.test.ts`. All fail. Record evidence. <!-- sdd-owner: implementation -->
-- [ ] **GREEN** Implement `src/domain/expiry-window.ts` (Zod refinement: UTC instant 24 h–30 d in the future), `src/domain/ordering.ts`, `src/domain/story-service.ts` (factory over Drizzle db; transactional remove). Tests pass. Record evidence. <!-- sdd-owner: implementation -->
-- [ ] **TRIANGULATE** Removal of a story without poster records only the media key; transaction rollback when the pending-deletion insert fails leaves the story row intact. <!-- sdd-owner: implementation -->
-- [ ] **REFACTOR** Reuse window refinement in both create and edit paths (single definition). <!-- sdd-owner: implementation -->
-- [ ] **Verify & bounds** Suite green; SL R3/R5/R7 scenarios pass; stale-`published` expiry handled by sweep-first (covered with PR 6 generation); diff ≤400 lines; record evidence. <!-- sdd-owner: implementation -->
+- [x] **RED** Write `src/domain/expiry-window.test.ts` (12 h and 45 d rejected; exactly 24 h and exactly 30 d accepted — SL R3 boundary scenario; non-UTC input rejected), `src/domain/story-service.test.ts` (create inserts app-generated UUID with status `published`; update edits `expiresAt`/`position` re-validating the window; ordering comparator: `position` asc, `createdAt` desc tiebreak — SL R5 scenarios; remove deletes the row and writes `storyMediaPendingDeletion` with media+poster keys **in the same transaction** — SL R7 scenario), `src/domain/ordering.test.ts`. All fail. Record evidence. <!-- sdd-owner: implementation -->
+- [x] **GREEN** Implement `src/domain/expiry-window.ts` (Zod refinement: UTC instant 24 h–30 d in the future), `src/domain/ordering.ts`, `src/domain/story-service.ts` (factory over Drizzle db; transactional remove). Tests pass. Record evidence. <!-- sdd-owner: implementation -->
+- [x] **TRIANGULATE** Removal of a story without poster records only the media key; transaction rollback when the pending-deletion insert fails leaves the story row intact. <!-- sdd-owner: implementation -->
+- [x] **REFACTOR** Reuse window refinement in both create and edit paths (single definition). <!-- sdd-owner: implementation -->
+- [x] **Verify & bounds** Suite green; SL R3/R5/R7 scenarios pass; stale-`published` expiry handled by sweep-first (covered with PR 6 generation); diff ≤400 lines; record evidence. <!-- sdd-owner: implementation -->
 
 ### PR 6 — `@stories/core`: manifest generation + atomic publication + history/rollback
 
