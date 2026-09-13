@@ -1,10 +1,15 @@
 import fastify, { type FastifyInstance, type RawServerDefault } from "fastify";
 
+import type { DrizzleDb } from "../../core/src/db/client.js";
+import type { ProjectRow } from "../../core/src/domain/project-service.js";
 import type { StorageAdapter } from "@stories/storage-adapters";
 
 import { registerLoopbackGuard } from "./plugins/loopback-guard.js";
 import { redactDeep, REDACTION } from "./plugins/redact.js";
+import { registerConnectionTestRoute } from "./routes/connection-test.js";
+import { registerCorsCheckRoute } from "./routes/cors-check.js";
 import { registerHealthRoute } from "./routes/health.js";
+import { registerProjectRoutes } from "./routes/projects.js";
 
 const SERVER_DEFAULTS = {
   host: "127.0.0.1",
@@ -18,10 +23,12 @@ interface LogRequest {
 }
 
 export interface ServerDependencies {
-  /** Reserved for the core-backed routes that land after the security backbone. */
-  readonly db: unknown;
-  /** Reserved for routes that construct storage adapters from local project data. */
-  readonly makeAdapter: () => Promise<StorageAdapter>;
+  /** Core owns SQLite; the API only coordinates local domain services. */
+  readonly db: DrizzleDb;
+  /** Builds an adapter from one stored project's trusted local credentials. */
+  readonly makeAdapter: (
+    project: ProjectRow,
+  ) => Promise<StorageAdapter> | StorageAdapter;
   /** Explicit test/process override; otherwise STORIES_API_PORT then the D9 default. */
   readonly port?: number;
 }
@@ -107,6 +114,9 @@ export function buildServer(
     done(null, redactDeep(payload));
   });
   registerHealthRoute(server);
+  registerProjectRoutes(server, dependencies);
+  registerConnectionTestRoute(server, dependencies);
+  registerCorsCheckRoute(server, dependencies);
 
   return server;
 }

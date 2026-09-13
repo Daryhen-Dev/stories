@@ -481,3 +481,35 @@ removed to reduce review evidence.
   lines. This is below the approved ≤1,500 PR 8 budget. The legacy per-row
   `diff ≤400` wording is superseded by the amendment; no tests, comments, or
   evidence were removed to affect the measurement.
+
+## PR 9 — `@stories/local-api` project management + two-context connection test (draft evidence, apply phase)
+
+- Branch: `sdd/pr09-project-management` (stacked on PR 8) · packages: `@stories/core` + `@stories/local-api`.
+- Final state: core **78/78** · local-api **20/20** · root typecheck/lint clean · `git diff --check` clean.
+
+### TDD cycle evidence
+
+| Phase | Command | Result |
+| --- | --- | --- |
+| Safety net | `pnpm --filter @stories/core test && pnpm --filter @stories/local-api test` | PASS — core 74/74; API 10/10 before edits |
+| RED | focused core + API tests | FAIL — absent `./project-service.js`; 8 endpoint scenarios returned 404 while prior suites passed |
+| GREEN | focused core + API tests | PASS — core 78/78; API 18/18 after service/routes/diagnosis implementation |
+| TRIANGULATE | `pnpm --filter @stories/local-api test -- cors-diagnosis.test.ts` | PASS — API 20/20; redaction fallback, overwrites, precedence, CORS/range/provider cases |
+| REFACTOR + verify | core/API suites · `pnpm typecheck` · `pnpm lint` · `git diff --check` | PASS — 78/78; 20/20; TypeScript, ESLint, whitespace clean |
+
+### Scenario traceability (PM R1–R4 / D2 / D8)
+
+| Requirement / scenario | Test evidence |
+| --- | --- |
+| PM R1 — UUID CRUD, DTO secrecy, cascade delete | core `creates...`, `updates...`, `deletes...`; API `creates, lists, updates, and deletes...` |
+| PM R2 / D8 — every GET redacted + defense in depth | API `never leaks a fixture credential...`; mis-mapped `credentialsJson` serializes as `[REDACTED]` |
+| PM R3 / D2 — Node public-read check persisted pending browser probe | API `constructs a project-aware adapter...`; `diagnoses bad credentials as auth...`; `overwrites a prior Node result...` |
+| PM R4 / D2 — browser CORS/range final result and precedence | API `stores a cors diagnosis...`, `reports a video-seeking diagnosis...`; pure diagnosis precedence/provider-remediation tests |
+| Input/error boundary | API `returns a typed 400...` plus unknown-project typed 404 assertions |
+
+### Notes and bounds
+
+- The Node route builds an adapter from a persisted project row; credentials never leave SQLite or the trusted local adapter factory. Node failures are mapped before browser outcomes and never diagnose CORS.
+- Supabase remediation reflects Spike B's gateway-managed hosted CORS finding; InsForge remediation specifies an S3-compatible origin/GET/Range bucket policy, exactly matching the documented limitation.
+- Shared Zod schemas/parsers are explicit rather than `.omit()` derivations because Zod 4 forbids omitting a schema after `.refine()`; no new dependency was added, and provider SDK types stay out of routes.
+- Code-facing measurement: **+1,379/−6 = 1,385** lines before OpenSpec evidence. The final PR 9 candidate remains within the approved **≤1,500** changed-line budget; no size exception or slicing is needed.

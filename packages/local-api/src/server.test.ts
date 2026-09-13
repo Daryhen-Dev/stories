@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { createTestDb } from "../../core/src/db/testing.js";
+
 import { buildServer, listenServer, loggerSerializers } from "./server.js";
 
 const makeAdapter = async () => {
@@ -12,8 +14,8 @@ let server: FastifyInstance | undefined;
 function createServer(port?: number): FastifyInstance {
   server =
     port === undefined
-      ? buildServer({ db: {}, makeAdapter })
-      : buildServer({ db: {}, makeAdapter, port });
+      ? buildServer({ db: createTestDb(), makeAdapter })
+      : buildServer({ db: createTestDb(), makeAdapter, port });
   return server;
 }
 
