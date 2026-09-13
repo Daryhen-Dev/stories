@@ -41,6 +41,9 @@ importers:
       '@stories/manifest-schema':
         specifier: workspace:*
         version: link:../manifest-schema
+      '@stories/storage-adapters':
+        specifier: workspace:*
+        version: link:../storage-adapters
       better-sqlite3:
         specifier: ^13.0.3
         version: 13.0.3

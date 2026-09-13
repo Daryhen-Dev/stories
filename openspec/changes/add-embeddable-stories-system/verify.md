@@ -313,3 +313,51 @@ fixes them.
   2026-09-12) supersedes for this change. Nothing was deleted, compressed, or
   restyled to fit; the tests-dominant strict-TDD unit is one cohesive work unit
   (one commit when the orchestrator commits).
+
+## PR 6 — `@stories/core` manifest generation + atomic publication + history/rollback (branch `sdd/pr06-core-publication`)
+
+### TDD cycle evidence (strict, Vitest — runner `pnpm --filter @stories/core test`)
+
+| Cycle | Command | Result |
+| --- | --- | --- |
+| RED | `pnpm --filter @stories/core test` | FAIL — `2 failed \| 6 passed (8)` files; both new test files fail with `Cannot find module './generate-manifest.js'` (and `./publication-service.js`, `./rollback.js`); prior 48 tests stay green; exit 1 |
+| GREEN | `pnpm --filter @stories/core test` | PASS — `8 passed (8)`, `62 passed (62)` (48 prior + 14 new: 7 generation, 7 publication) after one test-scenario fix (see deviations) |
+| TRIANGULATE | `pnpm --filter @stories/core test` | PASS — `65 passed (65)` (+3: step-4 upload failure, D5 orphan, pending-media TTL 31536000) after fixing the test's own recording lambda |
+| REFACTOR | `pnpm --filter @stories/core test` | PASS — `65 passed (65)`; verify+read-back round extracted to `src/publication/verify-manifest.ts`, inline duplicates deleted from publication-service.ts and rollback.ts; suite unchanged and green |
+
+- Workspace: `pnpm test` → `16 passed (16)` files, `115 passed \| 1 skipped (116)` (baseline 98+1 preserved; skip = env-gated live Supabase profile).
+- `pnpm typecheck` (root `tsc -p tsconfig.base.json`) — clean. `pnpm lint` — clean.
+
+### Scenario traceability (MP R3–R7)
+
+| Spec scenario | Test |
+| --- | --- |
+| R3 — expired excluded even with stale status column (sweep first) | `excludes expired stories even when the status column is stale (sweep runs first)` |
+| R3 — ordering position asc / createdAt desc | `orders stories by position ascending with createdAt descending as tiebreak` |
+| R3 — deterministic bytes | `produces identical bytes for equal inputs (deterministic serialization)` |
+| R3 — URLs from publicBaseUrl (+ poster present/absent) | `builds media and poster URLs from the project publicBaseUrl`, `includes posterUrl only when the story has a poster key` |
+| R3 — empty and 100-story projects valid | `accepts an empty project as a valid v1 manifest`, `accepts a 100-story project as a valid v1 manifest` |
+| R4 — happy path: manifest upload TTL 60, verify + read-back parse + id-set equality, exact bytes in success row | `publishes the manifest with a 60 s TTL, verifies it by read-back, and records the exact bytes as success` |
+| R4 — media verify failure aborts; previous bytes unchanged; failed row; typed AdapterError | `aborts with a typed AdapterError and leaves the previous manifest bytes unchanged when media verification fails` |
+| R4 — read-back mismatch = unverified failure; previous bytes recoverable from history | `treats a read-back mismatch as an unverified failure, with previous bytes recoverable from history` |
+| R5 — rollback restores latest success verbatim; restored expired stories self-expire by data | `rolls back to the latest successful bytes verbatim — restored expired stories self-expire by data` |
+| R5 — no success row → typed error | `throws a typed error when there is no successful publication to roll back to` |
+| R4/TRIANGULATE — step-4 upload failure leaves previous manifest serving | `keeps the previous manifest serving when the manifest upload itself fails at step 4` |
+| D5/TRIANGULATE — crash-window orphan accepted, never referenced | `accepts crash-window orphan media and never references it in the manifest (D5)` |
+| R6/TRIANGULATE — media+poster pending uploads request 31536000 | `uploads pending media and poster with cacheControlSeconds 31536000 (triangulation)` |
+| MP R7 — happy path performs ONLY the manifest PUT | asserted in the happy-path test via `uploadKeys == ['stories.json']` |
+| R6 served-header integration assert | deferred to PR 15 (per task text: "served-header assertion lands with the simulator in PR 15 integration") |
+
+### Notes and deviations
+
+- **Read-back fetcher is injectable** (`PublicationDeps.fetcher`, default `globalThis.fetch`) per the run brief; tests stub it with a decorator that serves the recorded manifest bytes from the fake adapter — no real network.
+- **Pending-media loader** (`PublicationDeps.loadPendingMedia`): design step 2 uploads "un-uploaded media", but core holds no media bytes; the loader is the minimal injectable source for the OBJECT_NOT_FOUND path. Happy path never calls it (asserted), PR 10's creation-time upload keeps it unused; without a source, pending media aborts with a typed `UPLOAD_FAILED`. Poster pending uploads declare `contentLength` from the provided bytes (the schema stores no poster size).
+- **Rollback history row**: a successful rollback appends its OWN `result='success'` row with the restored bytes (design "re-run steps 3–7 with stored contentJson"); after a second successful publication the latest success row is that publication — the first RED scenario wrongly expected v1 and was corrected to the spec semantics (restore after the second publish, expired story included verbatim).
+- **Corrupted `storyIdsJson`** is parsed inside the guarded block so it surfaces as a recorded failed rollback, not an unhandled SyntaxError.
+- **Failed history rows** store `contentJson: ""` (NOT NULL column; no bytes were published) plus `<code>: <detail>` error detail.
+- **LSP note.** RED-phase `Cannot find module` diagnostics and two stale advisories were refuted by the green Vitest runs and clean `tsc --noEmit` (same class as the PR 1–5 notes; NodeNext maps `.js` specifiers to sibling `.ts` sources).
+
+### Bounds
+
+- Authored new files: generate-manifest.test.ts 177, generate-manifest.ts 109, history.ts 103, policy.ts 10, publication-service.test.ts 526, publication-service.ts 254, rollback.ts 83, verify-manifest.ts 93 = **1,355**; tracked deltas: `src/index.ts` +4, `package.json` +1 (storage-adapters workspace dep), `pnpm-lock.yaml` +3 → code-facing authored ≈ **1,363 lines**; plus artifacts (tasks ±10, this section, apply-progress Run 6).
+- **Budget overage reported honestly** vs the operator amendment (≤800/PR): the work unit is generation+publication as ONE strict-TDD unit; the only cohesive split is generation (286) vs publication (1,077) — publication alone still exceeds 800, so no honest two-commit split fits. Nothing was deleted, compressed, or restyled to fit; tests are deliberately the dominant half. **Recommendation: `size:exception` for PR 6** (third after PRs 2–3). Served-header Tier-1 assert lands in PR 15; Tier 2 items stay in the final `tasks.md` section.
