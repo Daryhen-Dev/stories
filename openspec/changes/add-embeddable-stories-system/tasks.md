@@ -281,11 +281,11 @@ behavior so each work unit can be reviewed, verified, and reverted independently
 | Depends on | PR 11 · Branch → PR 11 branch |
 | Bounds | Start: cleanup only invocable in-process · Finish: scheduled + manual cleanup with status endpoint · Verify: `pnpm --filter @stories/local-api test` · Rollback: revert branch |
 
-- [ ] **RED** Write `packages/local-api/test/cleanup.test.ts` + `src/scheduler.test.ts` (fake timers): `POST /api/projects/:id/cleanup` runs the project job and returns the report; `GET /api/cleanup/status` returns the latest report; server startup runs the job without operator action (expired rows deleted via fake adapter); the 60-min interval fires and is configurable (EMC R1 scenarios). All fail. Record evidence. <!-- sdd-owner: implementation -->
-- [ ] **GREEN** Implement `src/routes/cleanup.ts` and `src/scheduler.ts` wired into `buildServer` startup. Tests pass. Record evidence. <!-- sdd-owner: implementation -->
-- [ ] **TRIANGULATE** Startup cleanup failure does not prevent the server from listening (best-effort, D1); interval override via env. <!-- sdd-owner: implementation -->
-- [ ] **REFACTOR** Unify trigger → service → report plumbing in one module. <!-- sdd-owner: implementation -->
-- [ ] **Verify & bounds** Suite green; EMC R1 scenarios pass; diff ≤400 lines; record evidence. <!-- sdd-owner: implementation -->
+- [x] **RED** Write `packages/local-api/test/cleanup.test.ts` + `src/scheduler.test.ts` (fake timers): `POST /api/projects/:id/cleanup` runs the project job and returns the report; `GET /api/cleanup/status` returns the latest report; server startup runs the job without operator action (expired rows deleted via fake adapter); the 60-min interval fires and is configurable (EMC R1 scenarios). All fail. Record evidence. <!-- sdd-owner: implementation -->
+- [x] **GREEN** Implement `src/routes/cleanup.ts` and `src/scheduler.ts` wired into `buildServer` startup. Tests pass. Record evidence. <!-- sdd-owner: implementation -->
+- [x] **TRIANGULATE** Startup cleanup failure does not prevent the server from listening (best-effort, D1); interval override via env. <!-- sdd-owner: implementation -->
+- [x] **REFACTOR** Unify trigger → service → report plumbing in one module. <!-- sdd-owner: implementation -->
+- [x] **Verify & bounds** Suite green; EMC R1 scenarios pass; maintainer-approved **639 / 400** logical-line ceiling/candidate (**142 tracked + 497 selected untracked route/scheduler/test lines**); record evidence. <!-- sdd-owner: implementation -->
 
 ### PR 13 — `@stories/stories-embed`: viewer core
 
