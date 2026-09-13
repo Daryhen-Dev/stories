@@ -853,3 +853,50 @@ rewritten or lost.
 - GREEN: `guardUploadBody()` now constructs its output `ReadableStream` with `{ highWaterMark: 0 }`, so it neither acquires nor pulls or locks the source until a consumer reads the returned stream. The focused test also consumes the guard and confirms multi-chunk byte forwarding.
 - Focused validation: the same command passed (exit 0), 6 files / 42 passed / 1 env-gated live profile skipped. Underflow and both overflow scenarios remain in the focused suite.
 - Final safety net after the correction: adapter suite 42 passing / 1 skipped; root typecheck, lint, `git diff --check`, and workspace suite 158 passing / 1 skipped all pass.
+
+## Run 11 — PR 10B `@stories/local-api` streaming story endpoints (size-gated)
+
+- Status consumed: parent-authoritative change `add-embeddable-stories-system`, `applyState: ready`, repo-local workspace and approved roots, delivery `auto-chain` / `stacked-to-main`, PR 10B-only scope, strict TDD active. Action-context warnings: none. `.codegraph/.gitignore` stayed uninspected and excluded.
+- Skill resolution: `paths-injected` (`work-unit-commits`, TypeScript, Zod 4).
+
+### Implemented work, pending delivery decision
+
+- Added pinned `@fastify/multipart@9.4.0`, field-first multipart parsing, Node-to-Web stream conversion only after scalar validation, PR 10A `guardUploadBody()` usage, upload/verify, media/poster cache policy, auto-publication, typed failures, PATCH, and pending-deletion DELETE.
+- Added the narrow core seam: creation can accept a validated preallocated UUID so `stories/<storyId>/…` storage keys and the inserted local row match; core metadata parsing owns scalar Zod expiry/type/position/size validation.
+- Publication failure semantics are pinned: creation returns 201 with the persisted story plus `publication.status: "failed"` and typed `{ code, detail }`; no rollback of local truth occurs.
+
+### TDD Cycle Evidence
+
+| Task | Test file | Safety net | RED | GREEN | TRIANGULATE | REFACTOR / final checks |
+| --- | --- | --- | --- | --- | --- | --- |
+| PR 10B story endpoints | `packages/local-api/test/stories.test.ts` | API 20/20; PR 10A 22/1 skipped | 7 endpoint 404 failures | 7/7 then 8/8 | limits, mismatch, video/poster, adapter/publication failures, edit/delete/404 | API 28/28; core 80/80; workspace 168/1 skipped; typecheck/lint/diff check pass |
+| Minimal core seam | `packages/core/src/domain/story-service.test.ts` | core 78/78 | strict input rejected `id` | 19/19 | metadata schema valid/invalid cases | 20/20 focused, 80/80 package |
+
+### Commands and results
+
+- `pnpm --filter @stories/local-api test` — PASS, 4 files / 28 tests.
+- `pnpm --filter @stories/core test` — PASS, 10 files / 80 tests.
+- `pnpm --filter @stories/storage-adapters exec vitest run src/stream-guard.test.ts src/supabase-adapter.test.ts` — PASS, 22 tests / 1 expected env-gated skip.
+- `pnpm test` — PASS, 24 files / 168 tests / 1 expected env-gated skip.
+- `pnpm typecheck`, `pnpm lint`, and `git diff --check` — PASS.
+
+### Blocked delivery boundary
+
+- Before OpenSpec evidence: 121 tracked + 724 new route + 626 new test = **1,471 logical lines**. Required evidence/task records push the cohesive unit over the explicit 1,500-line runtime cap.
+- Task checkboxes were intentionally not flipped: the five PR 10B rows remain visibly `[ ]` until an explicit `size:exception` or maintainer-approved re-slice is supplied. No commit, stage, push, PR, branch, or attempt-ledger action was taken.
+- Required decision: `size:exception` for this cohesive endpoint + strict-TDD test unit, or a new approved boundary preserving tests/evidence with the moved behavior.
+
+### Resolution — maintainer-approved size exception
+
+- The maintainer approved an updated `size:exception`; native SDD authority recorded the exact PR 10B candidate at **1,735 / 1,500 logical changed lines** (**+235**), superseding the earlier 1,620-line accounting after the request-clock correction and mandatory evidence. Final accounting is 221 tracked diff lines plus 1,514 selected untracked route/test lines; ordinary `git diff --numstat` omits those untracked files.
+- No behavior, tests, comments, or documentation was removed or compressed. The multipart parser, streaming route, edit/delete routes, minimal core seam, strict-TDD integration suite, and OpenSpec evidence remain one cohesive work unit.
+- Reconciliation gates reran successfully: local-api 28/28, core 80/80, PR 10A adapters 22 passed / 1 expected skip, typecheck, lint, and `git diff --check` clean. Exactly the five PR 10B task rows were then marked `[x]`; downstream rows remain untouched.
+- Candidate is ready for independent verification and native review. No commit, stage, push, or PR action occurred.
+
+### Correction — request-scoped expiry boundary clock
+
+- Independent readback exposed a real boundary defect: multipart metadata validation and final story insertion allocated separate clocks. A request exactly 24 hours ahead could pass before streaming then fail after the adapter consumed media, leaving an accepted orphan and returning HTTP 500.
+- RED: a Date-only fake-timer integration test fixed the request instant at `2030-01-01T00:00:00.000Z`, advanced it by one millisecond after media upload, and observed the expected failing 500 response.
+- GREEN: `stories.ts` now captures one request-scoped `now`, forwards it to `readStoryMultipart`, and passes it into `createStory`; `story-multipart.ts` parses scalar metadata with that same instant. The focused test passed 9/9.
+- TRIANGULATE: a 24-hour-minus-one-millisecond request is rejected 400 before upload/insert, while the exact boundary accepts. Final gates: local-api 30/30; core 80/80; adapter regression 22 passed / 1 expected skip; workspace 170 passed / 1 expected skip; typecheck, lint, and diff checks clean.
+- The correction is confined to the existing PR 10B route/parser/test work unit. It introduces no new endpoint or contract surface, and the current runtime objective is `pr10b-expiry-boundary-clock`.

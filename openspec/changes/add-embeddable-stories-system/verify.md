@@ -545,3 +545,46 @@ removed to reduce review evidence.
 - The Supabase Storage JS source installed at version 2.116.0 accepts `ReadableStream<Uint8Array>` and configures fetch duplex mode; the adapter forwards the exact `UploadInput.body` at that SDK boundary.
 - No Fastify route, multipart dependency, story CRUD, publication behavior, or local-api file belongs to PR 10A. Those remain exclusively in unchecked PR 10B tasks.
 - Current local aggregate measurement: **+704/−100 = 804 logical lines**, within the approved **≤1,500** budget. Native settlement owns each attempt's authoritative count. `.codegraph/.gitignore` remains excluded.
+
+## PR 10B — `@stories/local-api` streaming story endpoints (draft evidence, size-gated)
+
+- Branch: `sdd/pr10b-story-endpoints` stacked on PR 10A; scope is only multipart story creation, edit, removal, and the minimal core metadata/id seam.
+- Implementation is green but not delivery-complete: code/test/dependency measurement is **1,471 logical lines** before this mandatory evidence and the cumulative apply-progress record, exceeding the ≤1,500 cap once artifacts are included. PR 10B checkboxes remain `[ ]` pending an explicit `size:exception` or maintainer-approved re-slice.
+
+### TDD cycle evidence
+
+| Phase | Command | Result |
+| --- | --- | --- |
+| Safety net | local-api test + PR 10A focused regressions | PASS — API 20/20; adapter 22/1 skipped. |
+| RED | `pnpm --filter @stories/local-api exec vitest run test/stories.test.ts` | FAIL — 7 endpoint scenarios returned 404. |
+| Core seam RED | `pnpm --filter @stories/core exec vitest run src/domain/story-service.test.ts` | FAIL — preallocated UUID was rejected by strict core Zod input. |
+| GREEN | focused local-api/core suites | PASS — API 7/7 then 8/8; core 19/19 then 20/20. |
+| TRIANGULATE | focused API suite | PASS — limits/mismatch, video/JPEG poster, adapter failure, publication failure, edit/delete/404. |
+| REFACTOR + verify | package suites, PR 10A regression, workspace, typecheck, lint, diff check | PASS — API 28/28; core 80/80; adapter 22/1 skipped; workspace 168/1 skipped. |
+
+### Scenario traceability
+
+- Photo creation proves an unread guarded Web stream, declared length, media TTL, verify, inserted `published` row, and automatic manifest publication.
+- Invalid metadata and file-first payloads return typed 400 without adapter upload or row insertion; configured breaches map to 413, while underflow remains typed 400.
+- Video duration plus JPEG poster, typed upload/verify failures, post-insert publication failure semantics, expiry/position PATCH, pending-deletion DELETE, and unknown IDs are covered in `packages/local-api/test/stories.test.ts`.
+- Selected publication-failure semantics: HTTP 201 returns the inserted story and `publication.status: "failed"` with `{ code, detail }`, preserving local truth for a later publish.
+
+### Delivery decision needed
+
+- The complete cohesive strict-TDD work unit cannot fit the 1,500-line cap after required OpenSpec records. No code, tests, docs, or comments were removed or compressed to alter the measurement.
+- Required next decision: explicit `size:exception`, or a maintainer-approved PR boundary that moves a cohesive subset with its tests and evidence.
+
+### Resolution — approved size exception
+
+- The maintainer approved an updated `size:exception` for this exact PR 10B candidate: **1,735 / 1,500 logical lines** (**+235**), superseding the earlier 1,620-line accounting after the request-clock correction and mandatory evidence. The candidate remains one cohesive multipart streaming, CRUD, auto-publication, test, and evidence unit; no behavior, tests, comments, or documentation were removed to meet the former cap.
+- Final accounting is **221 tracked diff lines + 1,514 selected untracked route/test lines**. Plain `git diff --numstat` omits untracked files; the selected files were counted explicitly.
+- Reconciliation confirmation: local-api **28/28**, core **80/80**, PR 10A focused adapters **22 passed / 1 expected env-gated skip**, `pnpm typecheck`, `pnpm lint`, and `git diff --check` all pass. The five PR 10B task rows are now visibly `[x]`.
+- Next step: independent verification and native review; no commit, push, or PR was performed.
+
+### Correction — request-scoped expiry boundary clock
+
+- **Defect:** metadata parsing used one `new Date()` while `createStory()` used another after streaming. A request at exactly the inclusive 24-hour boundary could upload media and then fail local insertion as the second clock advanced, returning 500.
+- **RED:** `packages/local-api/test/stories.test.ts` freezes the request clock at `2030-01-01T00:00:00.000Z`, advances it by 1 ms after media consumption, and initially observed HTTP 500 where 201 was required.
+- **GREEN:** `registerStoryRoutes()` captures one request-scoped instant and passes it to both `readStoryMultipart()` and `createStory()`; multipart scalar validation now consumes that supplied instant instead of allocating a second clock. The focused suite passed 9/9.
+- **TRIANGULATE:** a request at 24 hours minus 1 ms returns typed 400 before adapter upload and leaves no story row; the inclusive boundary still inserts exactly once.
+- **Final regression:** local-api 30/30; core 80/80; PR 10A adapter regression 22 passed / 1 expected skip; workspace 170 passed / 1 expected skip; typecheck, lint, and whitespace checks pass. This is a bounded PR 10B correction; no new product scope was introduced.

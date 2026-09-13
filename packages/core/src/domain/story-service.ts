@@ -16,6 +16,7 @@ export interface ServiceClock {
 const createStoryInputSchema = (now: Date) =>
   z
     .object({
+      id: z.string().uuid().optional(),
       type: z.enum(["photo", "video"]),
       mediaKey: z.string().min(1),
       posterKey: z.string().min(1).nullish(),
@@ -38,6 +39,30 @@ const updateStoryInputSchema = (now: Date) =>
       (patch) => patch.expiresAt !== undefined || patch.position !== undefined,
       { message: "update requires expiresAt or position" },
     );
+
+const storyUploadMetadataSchema = (now: Date) =>
+  z
+    .object({
+      type: z.enum(["photo", "video"]),
+      expiresAt: expiryWindowSchema(now),
+      position: z.number().int().min(0),
+      mediaSize: z.number().int().positive(),
+      durationSeconds: z.number().int().positive().optional(),
+      posterSize: z.number().int().positive().optional(),
+    })
+    .strict();
+
+export type StoryUploadMetadata = z.input<
+  ReturnType<typeof storyUploadMetadataSchema>
+>;
+
+/** Shared scalar validation for the multipart route before it touches a file stream. */
+export function parseStoryUploadMetadata(
+  input: StoryUploadMetadata,
+  clock: ServiceClock = {},
+) {
+  return storyUploadMetadataSchema(clock.now ?? new Date()).parse(input);
+}
 
 export type CreateStoryInput = z.input<
   ReturnType<typeof createStoryInputSchema>
@@ -75,7 +100,7 @@ export function createStoryService(db: DrizzleDb) {
     const rows = await db
       .insert(stories)
       .values({
-        id: crypto.randomUUID(),
+        id: parsed.id ?? crypto.randomUUID(),
         projectId,
         type: parsed.type,
         mediaKey: parsed.mediaKey,
