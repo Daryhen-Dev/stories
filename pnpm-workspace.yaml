@@ -2,3 +2,9 @@ packages:
   - "packages/*"
   - "apps/*"
   - "tools/*"
+# Native/build-script dependencies, explicitly trusted:
+# - better-sqlite3: native binding (prebuilt binary) needed at runtime by @stories/core (PR 4).
+# - esbuild: drizzle-kit's transitive bundler, required to generate migrations (PR 4).
+allowBuilds:
+  better-sqlite3: true
+  esbuild: true
