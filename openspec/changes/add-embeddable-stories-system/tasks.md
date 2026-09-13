@@ -41,6 +41,13 @@ nothing.
   interval 60 min; loopback `127.0.0.1:3789` (`STORIES_API_PORT`); poster
   720 px / JPEG 0.8 / 3 s timeout; manifest version `1`; story cap 100;
   expiry window 24 h–30 d in the future.
+- **Budget amendment (operator, approved 2026-09-12):** the per-PR human review
+  budget is amended to **≤800 changed lines** for the remainder of this change.
+  Measured reality of PRs 1–3 (361 / 1,039 / 1,279) showed tests-dominant TDD
+  units exceed the original 400-line forecast; the early-measure-and-split rule
+  still applies when a unit blows past 800, and diffs are never shrunk by
+  deleting tests or docs. Individual `diff ≤400` mentions in older PR sections
+  are superseded by this amendment.
 - **PR mechanics (stacked-to-main):** PR 1 targets `main`; PR N targets the
   branch of PR N−1 (GitHub retargets to `main` as predecessors merge; the last
   PR is the final integration to `main`). Branch names: `sdd/prNN-<slug>`.
@@ -132,11 +139,11 @@ by the operator's `auto-chain` decision; per-PR budget risk stays Low.
 | Depends on | PR 3 · Branch → PR 3 branch |
 | Bounds | Start: no persistence · Finish: SQLite schema + migrations + expiry sweep work · Verify: `pnpm --filter @stories/core test` · Rollback: revert branch |
 
-- [ ] **RED** Write `src/db/schema.test.ts` (tables exist with design columns; `timestamp_ms` mode round-trips epoch-ms; story default status `published`; project delete cascades to stories/history/pending-deletion) and `src/domain/expire-stories.test.ts` (`published` → `expired` when `expiresAt <= now`; boundary equality transitions; future stories untouched; idempotent re-run). All fail. Record evidence. <!-- sdd-owner: implementation -->
-- [ ] **GREEN** Implement `src/db/schema.ts` (`projects` incl. `credentialsJson` never selected into DTOs — D8, `stories`, `publishHistory`, `storyMediaPendingDeletion`), `src/db/client.ts` (Drizzle init helper), forward-only migration `drizzle/0001_init.sql` via Drizzle Kit, `src/domain/expire-stories.ts`. Tests pass. Record evidence. <!-- sdd-owner: implementation -->
-- [ ] **TRIANGULATE** Cascade removal removes history and pending-deletion rows; UUID v4 app-side ids; unique project name enforced. <!-- sdd-owner: implementation -->
-- [ ] **REFACTOR** Centralize timestamp helpers (epoch-ms storage, ISO-8601 `Z` serialization at boundaries). <!-- sdd-owner: implementation -->
-- [ ] **Verify & bounds** Suite green; SL R4 sweep scenarios pass; diff ≤400 lines; record evidence. <!-- sdd-owner: implementation -->
+- [x] **RED** Write `src/db/schema.test.ts` (tables exist with design columns; `timestamp_ms` mode round-trips epoch-ms; story default status `published`; project delete cascades to stories/history/pending-deletion) and `src/domain/expire-stories.test.ts` (`published` → `expired` when `expiresAt <= now`; boundary equality transitions; future stories untouched; idempotent re-run). All fail. Record evidence. <!-- sdd-owner: implementation -->
+- [x] **GREEN** Implement `src/db/schema.ts` (`projects` incl. `credentialsJson` never selected into DTOs — D8, `stories`, `publishHistory`, `storyMediaPendingDeletion`), `src/db/client.ts` (Drizzle init helper), forward-only migration `drizzle/0001_init.sql` via Drizzle Kit, `src/domain/expire-stories.ts`. Tests pass. Record evidence. <!-- sdd-owner: implementation -->
+- [x] **TRIANGULATE** Cascade removal removes history and pending-deletion rows; UUID v4 app-side ids; unique project name enforced. <!-- sdd-owner: implementation -->
+- [x] **REFACTOR** Centralize timestamp helpers (epoch-ms storage, ISO-8601 `Z` serialization at boundaries). <!-- sdd-owner: implementation -->
+- [x] **Verify & bounds** Suite green; SL R4 sweep scenarios pass; diff ≤400 lines; record evidence. <!-- sdd-owner: implementation -->
 
 ### PR 5 — `@stories/core`: story domain service
 

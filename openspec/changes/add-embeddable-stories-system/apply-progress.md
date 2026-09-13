@@ -259,3 +259,76 @@ rewritten or lost.
   `tools/provider-simulator` into its own chained PR with the same exception on
   the adapter remainder). No commits made (orchestrator owns them). No
   subagents launched.
+
+## Run 4 — PR 4 `@stories/core` data model + expiry materialization (branch `sdd/pr04-core-data-model`)
+
+- Date: 2026-09-12 · Store: `openspec` · Strict TDD: active (Vitest)
+- Status consumed: parent-authoritative — change `add-embeddable-stories-system`,
+  branch `sdd/pr04-core-data-model` (stacked on PR 3), scope = exactly the 5
+  `### PR 4` checkboxes, PRs 1–3 intocables, PR 5+ out of scope. Budget:
+  operator amendment ≤800 changed lines per PR (Conventions, `tasks.md`).
+- Skill resolution: `paths-injected` (`gentle-ai`, `work-unit-commits`).
+
+### Completed tasks (checkboxes persisted in `tasks.md`)
+
+- [x] RED — `src/db/schema.test.ts` + `src/domain/expire-stories.test.ts`
+      written; run failed on missing modules under test (`./schema.js`,
+      `../db/schema.js`), 2 files failed / no tests, exit 1
+- [x] GREEN — `src/db/schema.ts` (projects/stories/publishHistory/
+      storyMediaPendingDeletion per design), `src/db/client.ts` (Drizzle init
+      helper, foreign_keys ON), forward-only `drizzle/0001_init.sql` (Drizzle
+      Kit generate + rename 0000→0001 with journal tag fix), `src/domain/
+      expire-stories.ts`; 7/7
+- [x] TRIANGULATE — cascade isolation across sibling projects (history +
+      pending-deletion per row kind), UUID v4 app-side (format + verbatim +
+      NOT NULL without default), UNIQUE project name; 10/10
+- [x] REFACTOR — `src/timestamps.ts` (`toIsoUtcZ`, ISO-8601 `Z` boundary
+      serialization) via mini RED→GREEN cycle (epoch-ms storage stays
+      centralized in `schema.ts` `mode: 'timestamp_ms'`); 12/12
+- [x] Verify & bounds — workspace 62 passed + 1 skipped; typecheck/tsc/lint
+      clean; authored ≈500 lines vs amended ≤800 budget
+
+### Files changed
+
+- New: `packages/core/` — `package.json`, `tsconfig.json`, `drizzle.config.ts`,
+  `src/index.ts`, `src/db/schema.ts`, `src/db/client.ts`, `src/db/testing.ts`
+  (test fixtures/support), `src/db/schema.test.ts`,
+  `src/domain/expire-stories.ts`, `src/domain/expire-stories.test.ts`,
+  `src/timestamps.ts`, `src/timestamps.test.ts`, `drizzle/0001_init.sql`,
+  `drizzle/meta/_journal.json`, `drizzle/meta/0000_snapshot.json`
+- Tracked: `pnpm-workspace.yaml` +6 (allowBuilds: better-sqlite3, esbuild),
+  `pnpm-lock.yaml` +996 (dependency tree), `tasks.md` ±15 (5 checkbox flips +
+  pre-existing operator amendment bullet)
+
+### Test commands run
+
+- `pnpm --filter @stories/core test` — RED fail → GREEN 7/7 → TRIANGULATE
+  10/10 → REFACTOR mini RED fail → GREEN 12/12
+- `pnpm test` (workspace) 62 passed + 1 skipped · `pnpm typecheck` clean ·
+  per-package `tsc --noEmit` clean ×4 · `pnpm lint` clean
+
+### Deviations from design/tasks (recorded in `verify.md`)
+
+1. Migration file renamed `0000_init.sql` → `0001_init.sql` (task-required
+   name) with journal tag updated; `migrate()` exercised in tests.
+2. pnpm 11 `allowBuilds` entries (better-sqlite3 prebuilt binary — no driver
+   change; esbuild via drizzle-kit) because ignored builds are fatal in
+   filtered runs.
+3. `credentialsJson` unmapped (D8 minimal-scope per prompt); deep redaction
+   tests in PRs 8–9.
+4. TRIANGULATE type fix: id-stripping NOT NULL test uses a scoped cast instead
+   of an eslint-disable (drizzle types `id` as required on insert).
+
+### Remaining work
+
+- PR 5 … PR 18 (all unchecked; untouched this run). Tier 2 apply-phase items
+  at the end of `tasks.md`.
+
+### Workload / PR boundary
+
+- Authored this slice: **500 hand-written lines** (one cohesive strict-TDD
+  unit: schema + migrations + expiry sweep, tests-dominant) — inside the
+  amended ≤800 per-PR budget; +1,437 generated/metadata lines (lockfile 996,
+  drizzle-kit snapshot 376, init SQL 53, journal 12) counted separately.
+  One work unit → one commit when the orchestrator commits; no commits made
+  (orchestrator owns them). No subagents launched.

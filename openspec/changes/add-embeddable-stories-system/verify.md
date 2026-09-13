@@ -156,3 +156,80 @@ fixes them.
 - **Live profile naming.** `STORIES_E2E_SUPABASE_URL`, `STORIES_E2E_SUPABASE_SERVICE_KEY`, `STORIES_E2E_SUPABASE_BUCKET`, `STORIES_E2E_SUPABASE_PUBLIC_BASE_URL` (the `STORIES_E2E_SUPABASE_*` family from tasks/design). No credentials existed in this run: live profile registered, skipped, and visible; the actual live run is the Tier 2 apply-phase item.
 - **LSP note.** pi-lens reported stale `Cannot find module` diagnostics during RED/GREEN transitions (missing modules under test, then freshly created shared files); refuted authoritatively by per-package `tsc --noEmit` (exit 0) and green Vitest runs — same class as the PR 1/PR 2 notes (NodeNext maps `.js` specifiers to sibling `.ts` sources).
 - **Bounds — OVER budget, honestly reported.** New files: 1,186 lines (adapter 376 + adapter tests 431 + simulator 157 + simulator tests 141 + shared plumbing 59 + scaffold 22); tracked: fake-adapter −38/+7 (refactor to shared plumbing), package.json +1, workspace +1, lockfile +84. Code-facing authored total ≈ 1,279 lines (lockfile included) vs the 400-line review budget / 800-line runtime attempt cap. The five mandated checkboxes form ONE strict-TDD unit spanning two packages (failure-mapping tests + suite registration + simulator); the only deletion-free split would separate the simulator (≈298 lines), leaving the adapter core ≈950. Recommendation: `size:exception` for PR 3 as authored, or an orchestrator-side split of the simulator package with the same exception on the remainder.
+
+## PR 4 — `@stories/core`: data model + expiry materialization (draft evidence, apply phase)
+
+- Branch: `sdd/pr04-core-data-model` (stacked on PR 3, commit `a18c09c`). Store:
+  `openspec`. Strict TDD: active (Vitest, `pnpm --filter @stories/core test`).
+- Scope consumed: exactly the 5 `### PR 4` checkboxes; PRs 1–3 untouched; PR 5+
+  out of scope. Budget: operator amendment ≤800 changed lines per PR
+  (`tasks.md` Conventions); measured early (see Bounds).
+
+### TDD cycle evidence
+
+| Phase | Command | Result |
+| --- | --- | --- |
+| RED | `pnpm --filter @stories/core test` | FAIL (exit 1) — `schema.test.ts`: `Cannot find module './schema.js'`; `expire-stories.test.ts`: `Cannot find module '../db/schema.js'`; 2 files failed, no tests ran (modules under test absent) |
+| GREEN | `pnpm --filter @stories/core test` | PASS (exit 0) — 7/7 in 2 files after implementing `schema.ts`, `client.ts`, `expire-stories.ts` + forward-only migration `drizzle/0001_init.sql` via Drizzle Kit |
+| TRIANGULATE | `pnpm --filter @stories/core test` | PASS (exit 0) — 10/10: cascade isolation per row kind across two projects; app-side UUID v4 (format + verbatim storage + NOT NULL violation when `id` omitted); UNIQUE project name |
+| REFACTOR | `pnpm --filter @stories/core test` | Mini-cycle: RED — `timestamps.test.ts` FAIL (`Cannot find module './timestamps.js'`, exit 1) → GREEN — 12/12 in 3 files (exit 0) after `src/timestamps.ts` |
+
+### Test commands run
+
+- `pnpm --filter @stories/core test` — RED 2-file fail → GREEN 7/7 →
+  TRIANGULATE 10/10 → REFACTOR mini RED fail → GREEN 12/12
+- `pnpm test` (workspace) — 11 files, 62 passed + 1 skipped (PRs 1–3 suite
+  unchanged at 50+1; +12 new core tests)
+- `pnpm typecheck` (root) clean · per-package `tsc -p tsconfig.json --noEmit`
+  clean ×4 · `pnpm lint` clean
+
+### Scenario traceability (SL R4 + design data model)
+
+| Spec scenario / design item | Test |
+| --- | --- |
+| SL R4 — past expiry → `expired` on sweep | `transitions published stories whose expiresAt is past to expired` (future sibling stays `published`; changed count 1) |
+| SL R4 — sweep threshold `expiresAt <= now` | `transitions at boundary equality (expiresAt exactly now)` |
+| SL R4 — correctness never trusts stale column; future rows safe | `leaves future stories untouched` (+1 h, +1 d, +30 d stay `published`) |
+| SL R4 — materialization is idempotent | `is idempotent: a re-run transitions zero rows` |
+| Design — projects columns + defaults | `stores the design columns and round-trips epoch-ms timestamps` (incl. `manifestKey` default `stories.json`; D8 comment on `credentialsJson`) |
+| Design — stories columns + default status | `defaults status to 'published' and position to 0, storing epoch-ms instants` |
+| Design — `timestamp_ms` epoch-ms round-trip | raw `sql<number>` assertions: `created_at`/`expires_at` hold the integer epoch-ms; Drizzle maps back to `Date` exactly |
+| Design — cascade edges (delete project) | `deletes the project's stories, publish history, and pending-deletion rows` |
+| Triangulation pins | `cascade removal is isolated: sibling projects keep every row kind`; `enforces unique project names`; `ids are app-side UUID v4 (no database-side default)` |
+
+### Notes and deviations
+
+- **Migration naming.** Drizzle Kit generated `0000_init.sql`; renamed to the
+  task-required `drizzle/0001_init.sql` with `meta/_journal.json` tag updated to
+  match (idx/when untouched). The suite's `createTestDb()` support helper runs
+  the real Drizzle `migrate()` over the renamed journal — the forward-only
+  migration path is exercised, not bypassed.
+- **pnpm 11 build-script gate.** `allowBuilds` added to `pnpm-workspace.yaml`
+  (better-sqlite3: native binding, ships a prebuilt binary — no compilation, no
+  driver change; esbuild: drizzle-kit transitive, needed because
+  verify-deps-before-run treats ignored builds as fatal in filtered runs).
+  Each entry carries an inline justification comment.
+- **D8.** `credentialsJson` is a storage column only; no DTO/serializer mapping
+  exists in this PR (deep redaction tests arrive in PRs 8–9).
+- **Type-boundary fix inside TRIANGULATE.** Omitting required insert field `id`
+  breaks drizzle's insert type (TS2769); the NOT NULL test strips the id via a
+  scoped `{ id?: string }` cast + `delete` at runtime (an eslint-disable variant
+  was tried first and replaced).
+- **LSP note.** Stale `Cannot find module` diagnostics during RED/GREEN
+  transitions (missing modules under test) — refuted by green Vitest runs and
+  `tsc --noEmit`; same class as the PR 1–3 notes.
+
+### Bounds
+
+- Hand-authored new code: **500 lines** — schema.test.ts 137, testing.ts 118,
+  schema.ts 76, expire-stories.test.ts 65, expire-stories.ts 20, client.ts 23,
+  package.json 23, timestamps.test.ts 13, timestamps.ts 10, drizzle.config.ts 8,
+  tsconfig.json 4, index.ts 3.
+- Generated / metadata (counted separately, not hand-authored):
+  `drizzle/0001_init.sql` 53 + `meta/_journal.json` 12 + `meta/0000_snapshot.json`
+  376 (drizzle-kit output); `pnpm-lock.yaml` +996 (drizzle-orm /
+  better-sqlite3 / drizzle-kit dependency tree); `pnpm-workspace.yaml` +6
+  (allowBuilds); `tasks.md` ±15 (5 checkbox flips + the operator's budget
+  amendment bullet that was already uncommitted on this branch).
+- Authored footprint ≈ **500 lines** — inside the amended ≤800 per-PR budget.
+  No split needed; nothing deleted or compressed to fit.
