@@ -1019,3 +1019,87 @@ rewritten or lost.
   clean. No code, tests, documentation, or evidence were removed or compressed, and
   no delivery action occurred: no commit, stage, push, PR, or attempt settlement.
 - PR 12's Verify & bounds row is visibly `[x]`; PR 13+ rows remain untouched.
+
+## Run 14 — PR 13A `@stories/stories-embed` pure manifest model
+
+- Status consumed: parent-authoritative `add-embeddable-stories-system` status with
+  `applyState: ready`, `artifactStore: openspec`, workspace root
+  `/home/daryhen/Documents/proyects/stories`, work unit `pr13a-manifest-model`,
+  `auto-chain` / `stacked-to-main`, and no action-context warnings. The supplied
+  native attempt authenticated as `state: proceed`; settlement remains parent-owned.
+- Strict TDD: active (Vitest). Skill resolution: `paths-injected`
+  (`gentle-ai`, `typescript`). One bounded implementation worker was coordinated;
+  no commits, staging, delivery, or edits outside the parent-authorized PR 13A
+  surfaces were made.
+
+### Completed tasks (persisted in `tasks.md`)
+
+- [x] RED — new model/loader tests were written before production modules and the
+  focused command failed (exit 1) on absent `./manifest-model.js` and
+  `./manifest-loader.js` imports.
+- [x] GREEN — package scaffold, source-only exports, pure manifest model, and
+  injected fetch/warning/clock seams made the focused suite pass 3/3.
+- [x] TRIANGULATE — second clock boundary, conflicting position/order, optional
+  poster shape, malformed JSON, schema-invalid payload, and non-OK HTTP cases made
+  the focused suite pass 6/6.
+- [x] REFACTOR — the post-gate refactor replaced chained `filter().map()` with one
+  order-preserving expiry/model pass; focused suite remained 6/6.
+- [x] Verify & bounds — package suite 6/6 plus root typecheck, lint, and whitespace
+  gates passed; the maintainer-authorized native **526 / 400** candidate ceiling is
+  recorded in `verify.md`. All five PR 13A implementation rows are visibly `[x]`.
+
+### TDD Cycle Evidence
+
+| Task | Test files | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| PR 13A manifest model | `src/manifest-model.test.ts`, `src/manifest-loader.test.ts` | Pure Node unit | N/A (new files) | 2 missing-module suites | 3/3 | 6/6 clock/order/poster/failure cases | 6/6; post-gate one-pass filter/model refactor preserved behavior and order |
+
+### Files changed
+
+- `packages/stories-embed/package.json` — private ESM source-export package with the
+  exact single runtime dependency `@stories/manifest-schema: workspace:*`.
+- `packages/stories-embed/tsconfig.json` — extends the workspace base TypeScript config.
+- `packages/stories-embed/src/manifest-model.ts` — typed expiry-filtered, order-preserving
+  render model with optional-poster distinction.
+- `packages/stories-embed/src/manifest-loader.ts` — injected fetch/warning seam,
+  explicit unknown-version handling, JSON/schema/HTTP failure handling.
+- `packages/stories-embed/src/index.ts` — source-only model and loader API exports.
+- `packages/stories-embed/src/manifest-model.test.ts` and
+  `packages/stories-embed/src/manifest-loader.test.ts` — six focused behavioral tests.
+- `pnpm-lock.yaml` — offline workspace importer synchronization only.
+- `openspec/changes/add-embeddable-stories-system/{tasks.md,verify.md,apply-progress.md}`
+  — five PR 13A checkbox updates and cumulative strict-TDD evidence.
+
+### Test commands run
+
+- `pnpm vitest run packages/stories-embed/src/manifest-model.test.ts packages/stories-embed/src/manifest-loader.test.ts`
+  — RED FAIL: 2 missing-module suites; GREEN PASS: 3/3; TRIANGULATE PASS: 6/6;
+  REFACTOR PASS: 6/6.
+- `pnpm install --lockfile-only --offline` — PASS; no downloads or external packages.
+- `pnpm --filter @stories/stories-embed test` — PASS: 2 files / 6 tests.
+- `pnpm typecheck` — PASS.
+- `pnpm lint` — PASS.
+- `git diff --check` — PASS (no output).
+- Authorized measurement command — output `tracked=82`; this excludes the untracked
+  package and includes pre-existing task-split delta, so it is not a final native
+  outcome and parent measurement is still required.
+
+### Deviations from design
+
+- None. The package deliberately has no Lit, DOM, custom-element, registration,
+  browser-global, build, or distribution path; those remain PR 13B/PR 14 work.
+- Warning emission is a required injected seam rather than `console.warn`, preserving
+  Node-only TypeScript libraries and making every warning assertion concrete.
+
+### Remaining tasks / workload boundary
+
+- Remaining PR 13A implementation row: Verify & bounds awaits an explicit size decision;
+  RED/GREEN/TRIANGULATE/REFACTOR are persisted as `[x]`.
+- Subsequent implementation-owned PR 13B+ and Tier 2 rows remain intentionally
+  untouched and are outside this work-unit boundary.
+- Native attempt #25 measured **526 / 400** logical changed lines (**+126**); the
+  maintainer explicitly authorized that cohesive candidate and native reset
+  `a3051569188c5964cc31147a18d12670af2ffa1589419c57437d5a47e7662cd3`
+  records the decision. The broad `origin/main` diff is 592 because it includes 66
+  pre-attempt task-split planning lines; that is not the native candidate accounting.
+  Native review is the next gate; no delivery action is authorized.

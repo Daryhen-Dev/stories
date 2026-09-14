@@ -2,7 +2,7 @@
 
 Implementation plan for the first product slice: local-first panel → per-project
 public manifests on Supabase → Lit embed for Astro/Next.js sites, with PC-off
-availability and expiry. The change is delivered as **19 stacked PRs**
+availability and expiry. The change is delivered as **20 stacked PRs**
 (`stacked-to-main`), each with its own verification and rollback boundary. This
 file plans work only; it implements nothing.
 
@@ -56,11 +56,21 @@ file plans work only; it implements nothing.
   R1/R2. PR 10A establishes and tests the transport contract; PR 10B consumes it
   without reimplementing it. Downstream labels remain PR 11–PR 18 to preserve
   historical references.
+- **Embed split (maintainer-selected after PR 12):** the original PR 13 is split
+  into **PR 13A** (pure manifest fetch/parse/filter/order model) and **PR 13B**
+  (Lit element, navigation, attribute refetch, and SSR-safe registration). This
+  keeps browser-only registration and DOM test setup out of the pure model while
+  leaving visual UX, visibility refresh, and distribution builds in PR 14.
+  Downstream labels remain PR 14–PR 18 to preserve historical references.
+- **Runtime budget authority:** the active native `sdd-attempt` budget controls
+  each candidate. The recorded ≤1,500 planning ceiling never grants an exception
+  or replaces a narrower native bound.
 - **PR mechanics (stacked-to-main):** PR 1 targets `main`; each later slice
   targets its predecessor branch (GitHub retargets to `main` as predecessors
   merge; the last PR is the final integration). Branch names use
-  `sdd/prNN-<slug>` except the approved split, which uses
-  `sdd/pr10a-streaming-contract` and `sdd/pr10b-story-endpoints`. Before opening
+  `sdd/prNN-<slug>` except approved splits, which use
+  `sdd/pr10a-streaming-contract`, `sdd/pr10b-story-endpoints`,
+  `sdd/pr13a-manifest-model`, and `sdd/pr13b-viewer-element`. Before opening
   any PR: measure `git diff --stat <base>...HEAD`; if it exceeds 1,500 changed
   lines, make **one honest slicing pass** (chained-pr skill) — never shrink diffs
   by deleting comments/tests/docs. No child subagents are launched by this plan;
@@ -70,9 +80,9 @@ file plans work only; it implements nothing.
 
 | Field | Value |
 | ------- | ------- |
-| Planned delivery | 19 stacked work units: PR 10A establishes truthful streaming; PR 10B adds stories endpoints; downstream labels remain PR 11–PR 18. |
-| Review budget | ≤1,500 changed lines per PR (operator amendment). |
-| Forecast basis | The former numeric total is superseded for the split; PR 10A and PR 10B are measured from their TDD evidence rather than assigned invented estimates. |
+| Planned delivery | 20 stacked work units: PR 10A establishes truthful streaming; PR 10B adds stories endpoints; PR 13A establishes the pure manifest model; PR 13B adds the viewer element and SSR-safe registration; downstream labels remain PR 14–PR 18. |
+| Review budget | Historical planning ceiling ≤1,500; the active native budget governs each candidate. |
+| Forecast basis | The former numeric total is superseded for the approved splits; PR 10A/10B and PR 13A/13B are measured from their TDD evidence rather than assigned invented estimates. |
 | Chained PRs recommended | Yes |
 | Delivery strategy | auto-chain (operator decision; supersedes the `ask-on-risk` config default) |
 | Chain strategy | stacked-to-main |
@@ -81,7 +91,7 @@ file plans work only; it implements nothing.
 Decision needed before apply: No
 Chained PRs recommended: Yes
 Chain strategy: stacked-to-main
-≤1,500-line budget risk: Low
+Native budget risk: Measure before delivery
 ```
 
 Forecast note: the split is a requirements-correctness boundary, not code golf.
@@ -287,20 +297,35 @@ behavior so each work unit can be reviewed, verified, and reverted independently
 - [x] **REFACTOR** Unify trigger → service → report plumbing in one module. <!-- sdd-owner: implementation -->
 - [x] **Verify & bounds** Suite green; EMC R1 scenarios pass; maintainer-approved **639 / 400** logical-line ceiling/candidate (**142 tracked + 497 selected untracked route/scheduler/test lines**); record evidence. <!-- sdd-owner: implementation -->
 
-### PR 13 — `@stories/stories-embed`: viewer core
+### PR 13A — `@stories/stories-embed`: manifest model
 
 | | |
 | --- | --- |
-| Package | `packages/stories-embed` (new; deps: `lit`, `@stories/manifest-schema`) |
-| Specs | SEV R2 (expiry filter), R3 (order trusted), R4 (version guard), R6 client-only half (inert on server, `defineStoriesViewer`, `/register` entry); AC2 embed half |
-| Depends on | PR 1 (schema) · Branch → PR 12 branch |
-| Bounds | Start: no embed package · Finish: element parses, guards, filters, preserves order, client-only · Verify: `pnpm --filter @stories/stories-embed test` · Rollback: revert branch |
+| Package | `packages/stories-embed` (new; deps: `@stories/manifest-schema`) |
+| Specs | SEV R2 (expiry filter), R3 (order trusted), R4 (version guard), AC2 embed half; data-model foundation for SEV R6 |
+| Depends on | PR 1 (schema) · PR 12 (merged) · Branch → `main` |
+| Bounds | Start: no embed package · Finish: pure loader/model parses, guards, filters, and preserves serialized order · Verify: `pnpm --filter @stories/stories-embed test` · Rollback: revert branch |
 
-- [ ] **RED** Write `src/stories-viewer.test.ts`: fetch + parse via `manifestSchemaV1` (mocked fetch); unknown `version` → console warning + renders nothing, never guesses (SEV R4 scenario); expiry filter by client clock with `vi.setSystemTime` — expired-at-or-before filtered, valid kept, re-checked on each `next()` so a mid-session expiry drops out (SEV R2 scenarios); displayed order equals manifest array order — no re-sort (SEV R3 scenario); `src/registration.test.ts`: module import without `window` registers nothing; `defineStoriesViewer()` registers explicitly; `/register` entry side-effects only in a browser-like env (SEV R6 client-only scenario). All fail. Record evidence. <!-- sdd-owner: implementation -->
-- [ ] **GREEN** Implement `src/stories-viewer.ts` (Lit `<stories-viewer manifest-url="…">` core: load → parse → filter → hold), `src/manifest-loader.ts`, `src/registration.ts`, `src/index.ts`, `src/register.ts`. Tests pass. Record evidence. <!-- sdd-owner: implementation -->
-- [ ] **TRIANGULATE** Malformed payload → warning + empty render; poster present/absent surfaced to the render model; refetch on attribute change. <!-- sdd-owner: implementation -->
-- [ ] **REFACTOR** Split parse/filter into a pure module consumed by the element (kept SSR-free by construction). <!-- sdd-owner: implementation -->
-- [ ] **Verify & bounds** Suite green; SEV R2/R3/R4 + R6 (client-only) scenarios pass; diff ≤400 lines; record evidence. <!-- sdd-owner: implementation -->
+- [x] **RED** Write `src/manifest-model.test.ts` and `src/manifest-loader.test.ts`: mocked fetch + `manifestSchemaV1` parsing; unknown `version` → console warning + empty result, never guesses (SEV R4); client-clock expiry filtering excludes at-or-before now and keeps valid stories (SEV R2); result order equals manifest array order — no re-sort (SEV R3). All fail. Record evidence. <!-- sdd-owner: implementation -->
+- [x] **GREEN** Create the package and implement `src/manifest-model.ts`, `src/manifest-loader.ts`, and data exports from `src/index.ts`. Tests pass. Record evidence. <!-- sdd-owner: implementation -->
+- [x] **TRIANGULATE** Malformed payload and non-successful fetch produce a warning + empty result; poster present/absent remains explicit in the render model. <!-- sdd-owner: implementation -->
+- [x] **REFACTOR** Keep parse/filter/order pure and injectable by clock; no Lit, DOM, custom-element registration, or browser side effect enters this slice. <!-- sdd-owner: implementation -->
+- [x] **Verify & bounds** Suite green; SEV R2/R3/R4 data scenarios pass; maintainer-authorized **526 / 400** native candidate ceiling; record evidence. <!-- sdd-owner: implementation -->
+
+### PR 13B — `@stories/stories-embed`: viewer element + registration
+
+| | |
+| --- | --- |
+| Package | `packages/stories-embed` (extends; adds `lit` and browser test setup as needed) |
+| Specs | SEV R2 navigation re-check, R6 client-only half (inert on server, `defineStoriesViewer`, `/register` entry); AC2 embed half |
+| Depends on | PR 13A · Branch → PR 13A branch |
+| Bounds | Start: pure manifest model · Finish: headless Lit element loads/holds the model, re-checks expiry on `next()`, refetches on attribute change, and registers only in browser-like environments · Verify: `pnpm --filter @stories/stories-embed test` · Rollback: revert branch |
+
+- [ ] **RED** Write `src/stories-viewer.test.ts` and `src/registration.test.ts`: the element loads the model; `next()` re-checks expiry so a mid-session expiry drops out; `manifest-url` changes refetch; server import registers nothing; `defineStoriesViewer()` registers explicitly; `/register` side-effects only in a browser-like environment. All fail. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **GREEN** Implement `src/stories-viewer.ts`, `src/registration.ts`, and `src/register.ts`; extend `src/index.ts` with the element and registration exports. Tests pass. Record evidence. <!-- sdd-owner: implementation -->
+- [ ] **TRIANGULATE** Empty model after navigation is safe, repeated explicit registration is idempotent, and stale attribute-load results cannot replace the current attribute's model. <!-- sdd-owner: implementation -->
+- [ ] **REFACTOR** Keep the element a consumer of the PR 13A pure model; guard every registration surface so server imports stay inert. <!-- sdd-owner: implementation -->
+- [ ] **Verify & bounds** Suite green; SEV R2 navigation and R6 client-only scenarios pass; measure the active native changed-line budget and record evidence without inferring an exception. <!-- sdd-owner: implementation -->
 
 ### PR 14 — `@stories/stories-embed`: viewer UX + distribution builds
 
@@ -308,7 +333,7 @@ behavior so each work unit can be reviewed, verified, and reverted independently
 | --- | --- |
 | Package | `packages/stories-embed` (extends; build: Vite library + IIFE) |
 | Specs | SEV R1 (full-screen tap-through viewer), R5 (visibility refresh), R6 (npm ESM + prebuilt IIFE ≤50 KB gzipped, primary path); Q1/D7/R11 |
-| Depends on | PR 13 · Branch → PR 13 branch |
+| Depends on | PR 13B · Branch → PR 13B branch |
 | Bounds | Start: headless element · Finish: interactive viewer shipping as npm + single-file script · Verify: `pnpm --filter @stories/stories-embed test && pnpm --filter @stories/stories-embed build` · Rollback: revert branch |
 
 - [ ] **RED** Write `src/viewer-ux.test.ts` (jsdom): per-story progress bars; prev/next via tap zones and arrow keys; pause on pointer-hold; photo renders, video renders with `posterUrl` and media-only fallback when absent (SEV R1 scenarios); `src/refresh.test.ts`: re-fetch when the tab becomes visible if last fetch >60 s, no re-fetch under 60 s (SEV R5 scenarios); `src/bundle-size.test.ts` (runs post-build): `dist/stories-viewer.iife.js` exists and gzipped size ≤50 KB. All fail. Record evidence. <!-- sdd-owner: implementation -->
@@ -407,9 +432,9 @@ project, using the steps documented in `spike-findings.md`:
 
 ## Review Workload Forecast
 
-The post-PR 9 split is intentionally not assigned a new guessed line estimate.
-PR 10A and PR 10B each measure their actual TDD diff before review; every slice
-remains bounded by the approved ≤1,500 changed-line budget and may receive one
+The post-PR 9 and post-PR 12 splits are intentionally not assigned new guessed
+line estimates. PR 10A/10B and PR 13A/13B each measure their actual TDD diff before
+review; every slice remains bounded by the active native budget and may receive one
 honest additional split if that bound is exceeded.
 
 | PR | Slice | Budget evidence |
@@ -419,19 +444,20 @@ honest additional split if that bound is exceeded.
 | 10B | Multipart story creation, edit, removal, auto-publish | Measure after PR 10A is committed |
 | 11 | Publication endpoints | Measure during its TDD work unit |
 | 12 | Cleanup endpoints + triggers | Measure during its TDD work unit |
-| 13 | Embed viewer core | Measure during its TDD work unit |
+| 13A | Embed manifest model | Measure during its TDD work unit |
+| 13B | Embed viewer element + SSR-safe registration | Measure during its TDD work unit |
 | 14 | Embed UX + ESM/IIFE builds | Measure during its TDD work unit |
 | 15 | Demos + Playwright smokes + PC-off | Measure during its TDD work unit |
 | 16 | Panel shell + projects + connection UI | Measure during its TDD work unit |
 | 17 | Panel story editor + poster capture | Measure during its TDD work unit |
 | 18 | Panel publish/rollback + cleanup UI + docs | Measure during its TDD work unit |
-| **Total** | **19 stacked work units** | **≤1,500 changed lines per slice** |
+| **Total** | **20 stacked work units** | **Active native budget per slice** |
 
 ```text
 Decision needed before apply: No
 Chained PRs recommended: Yes
 Chain strategy: stacked-to-main
-≤1,500-line budget risk: Low
+Native budget risk: Measure before delivery
 ```
 
 Chain diagram (each PR targets its predecessor's branch; predecessors merge to
@@ -439,5 +465,5 @@ Chain diagram (each PR targets its predecessor's branch; predecessors merge to
 
 ```text
 main ─▶ PR1 ─▶ PR2 ─▶ PR3 ─▶ PR4 ─▶ PR5 ─▶ PR6 ─▶ PR7 ─▶ PR8 ─▶ PR9 ─▶ PR10A
-     ─▶ PR10B ─▶ PR11 ─▶ PR12 ─▶ PR13 ─▶ PR14 ─▶ PR15 ─▶ PR16 ─▶ PR17 ─▶ PR18 ─▶ main
+     ─▶ PR10B ─▶ PR11 ─▶ PR12 ─▶ PR13A ─▶ PR13B ─▶ PR14 ─▶ PR15 ─▶ PR16 ─▶ PR17 ─▶ PR18 ─▶ main
 ```

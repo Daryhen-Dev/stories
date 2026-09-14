@@ -682,3 +682,56 @@ removed to reduce review evidence.
 - The PR 12 **Verify & bounds** row is checked with this approved accounting. No
   code, tests, documentation, or evidence were removed or compressed, and no
   delivery action occurred: no commit, stage, push, PR, or attempt settlement.
+
+## PR 13A — `@stories/stories-embed` pure manifest model (draft evidence, apply phase)
+
+- Branch: `sdd/pr13a-manifest-model` · package: `packages/stories-embed` (new).
+- Scope: Node-safe pure manifest fetch/validation/filter model only. No Lit, browser
+  DOM, registration, custom element, build, or distribution behavior was introduced.
+- Runner: `pnpm vitest run packages/stories-embed/src/manifest-model.test.ts packages/stories-embed/src/manifest-loader.test.ts`.
+- Final state: focused and package suites **2 files / 6 tests passing**; workspace
+  suite **29 files / 192 passing / 1 expected skip**; root TypeScript, ESLint, and
+  whitespace validation clean.
+
+### TDD cycle evidence
+
+| Phase | Command | Result |
+| --- | --- | --- |
+| RED | `pnpm vitest run packages/stories-embed/src/manifest-model.test.ts packages/stories-embed/src/manifest-loader.test.ts` | FAIL (exit 1) — 2 suites with no tests: `Cannot find module './manifest-model.js'` and `Cannot find module './manifest-loader.js'`; modules under test intentionally absent. |
+| GREEN | same focused command | PASS — 2 files / 3 tests after the minimum package scaffold, pure model, injected loader seam, schema validation, version guard, expiry filter, and source exports. |
+| TRIANGULATE | same focused command | PASS — 2 files / 6 tests: second strict-clock boundary, manifest order despite conflicting positions, poster present/absent, malformed JSON, schema-invalid payload, and non-OK HTTP failures. |
+| REFACTOR | same focused command | PASS — 2 files / 6 tests; the post-gate refactor replaced chained `filter().map()` with one order-preserving expiry/model pass, preserving behavior. |
+| Verify | `pnpm --filter @stories/stories-embed test` · `pnpm typecheck` · `pnpm lint` · `git diff --check` | PASS — package 2 files / 6 tests; root TypeScript and ESLint clean; no whitespace errors. |
+
+### Scenario traceability (SEV R2 / R3 / R4; AC2 embed half)
+
+| Requirement / scenario | Test evidence |
+| --- | --- |
+| SEV R2 — expired at or before the client clock is excluded | `filters stories expired at the clock boundary...` removes the equality boundary; `uses each supplied clock strictly...` proves a later supplied clock removes a near-boundary story while a later story remains. |
+| SEV R3 — serialized manifest order is trusted | The first model test provides positions `99` then `0` and asserts output remains that exact array order, proving filtering never sorts. |
+| SEV R4 — v1 payload validates via the injected fetch seam | `fetches and validates a v1 manifest through the injected seam` asserts the URL call, concrete loaded story fields, and no warning. |
+| SEV R4 — unknown version never forward-guesses | `warns and returns no stories for an unknown manifest version...` supplies `version: 2`, asserts exact warning text, and gets an empty model. |
+| Invalid transport/payloads fail closed | `warns and returns empty data for malformed JSON and schema-invalid v1 data` and `warns and returns empty data when the manifest HTTP request is unsuccessful` assert distinct warnings and empty models. |
+| Later-renderer poster distinction | The model test asserts a poster URL is preserved when present and the `posterUrl` property is absent when it was omitted from the validated manifest. |
+
+### Notes and bounds
+
+- `ManifestFetcher` and required `ManifestWarning` are explicit injected seams, so the
+  package stays Node-safe and warning behavior is observed directly without browser
+  globals or DOM test libraries.
+- `manifestSchemaV1.safeParse` runs only after the structural version guard accepts
+  literal v1; version `2` is warned and rejected without interpreting it as a v1
+  manifest. JSON/schema/HTTP failures likewise return the same empty typed model.
+- `filterActiveStories` uses `expiresAt > now` in one order-preserving pass and never
+  calls `.sort()`. The render model preserves absent `posterUrl` rather than converting
+  it to `undefined` as an own property.
+- `pnpm install --lockfile-only --offline` completed with no downloads or external
+  packages. Runtime dependencies contain exactly
+  `"@stories/manifest-schema": "workspace:*"`.
+- Native attempt #25 measured **526 / 400 logical changed lines** (**+126**). The
+  maintainer explicitly authorized that cohesive candidate; native reset
+  `a3051569188c5964cc31147a18d12670af2ffa1589419c57437d5a47e7662cd3`
+  records the authorization. The broad `origin/main` diff is 592 because it includes
+  66 pre-attempt task-split planning lines; it is not the native candidate accounting.
+  Selected package source/test files are included rather than omitted. Native review
+  remains required, and no delivery action is authorized.
