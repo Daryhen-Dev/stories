@@ -22,8 +22,40 @@ export interface ProviderSimulator {
   /** Base URL, e.g. http://127.0.0.1:41234 */
   readonly url: string;
   put(key: string, upload: SimulatorUpload): void;
+  /** Removes an object and reports whether it existed. */
+  delete(key: string): boolean;
   close(): Promise<void>;
 }
+
+export interface ProviderSimulatorOptions {
+  readonly port?: number;
+  /** Explicit browser origins that may read this public test bucket cross-origin. */
+  readonly corsOrigins?: readonly string[];
+}
+
+const DEFAULT_CORS_ORIGINS = ["http://127.0.0.1:4175"] as const;
+
+const corsHeaders = (
+  origin: string | undefined,
+  allowedOrigins: ReadonlySet<string>,
+): Record<string, string> => {
+  if (origin === undefined || !allowedOrigins.has(origin)) return {};
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Expose-Headers":
+      "Accept-Ranges, Content-Length, Content-Range, Content-Type",
+  };
+};
+
+const corsPreflightHeaders = (
+  origin: string | undefined,
+  allowedOrigins: ReadonlySet<string>,
+): Record<string, string> => ({
+  ...corsHeaders(origin, allowedOrigins),
+  "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+  "Access-Control-Allow-Headers": "Range, Content-Type",
+  "Access-Control-Max-Age": "600",
+});
 
 /**
  * D9 cache policy (design table): the manifest's short TTL is served as
@@ -69,17 +101,24 @@ const respond = (
 
 const handle = (
   store: Map<string, StoredObject>,
+  allowedOrigins: ReadonlySet<string>,
   req: IncomingMessage,
   res: ServerResponse,
 ): void => {
   const url = new URL(req.url ?? "/", "http://simulator.local");
+  const headers = corsHeaders(req.headers.origin, allowedOrigins);
+  if (req.method === "OPTIONS") {
+    respond(res, 204, corsPreflightHeaders(req.headers.origin, allowedOrigins));
+    return;
+  }
   const key = decodeURIComponent(url.pathname).replace(/^\/+/, "");
   const stored = store.get(key);
   if (!stored) {
-    respond(res, 404, {});
+    respond(res, 404, headers);
     return;
   }
   const metadata = {
+    ...headers,
     "Content-Type": stored.contentType,
     "Cache-Control": stored.cacheControl,
     "Accept-Ranges": "bytes",
@@ -92,13 +131,20 @@ const handle = (
     return;
   }
   if (req.method !== "GET") {
-    res.writeHead(405, { Allow: "GET, HEAD", "Content-Length": 0 });
+    res.writeHead(405, {
+      ...headers,
+      Allow: "GET, HEAD, OPTIONS",
+      "Content-Length": 0,
+    });
     res.end();
     return;
   }
   const range = parseRange(req.headers.range, stored.body.byteLength);
   if (range === "invalid") {
-    respond(res, 416, { "Content-Range": `bytes */${stored.body.byteLength}` });
+    respond(res, 416, {
+      ...metadata,
+      "Content-Range": `bytes */${stored.body.byteLength}`,
+    });
     return;
   }
   if (range) {
@@ -129,12 +175,13 @@ const handle = (
  * the stand-in for the real provider bucket in integration tests (MSA R7).
  */
 export const createProviderSimulator = (
-  options: { readonly port?: number } = {},
+  options: ProviderSimulatorOptions = {},
 ): Promise<ProviderSimulator> =>
   new Promise((resolve, reject) => {
     const store = new Map<string, StoredObject>();
+    const allowedOrigins = new Set(options.corsOrigins ?? DEFAULT_CORS_ORIGINS);
     const server = createServer((req, res) => {
-      handle(store, req, res);
+      handle(store, allowedOrigins, req, res);
     });
     server.once("error", reject);
     server.listen(options.port ?? 0, "127.0.0.1", () => {
@@ -152,6 +199,9 @@ export const createProviderSimulator = (
             contentType: upload.contentType,
             cacheControl: cacheControlHeader(upload.cacheControlSeconds),
           });
+        },
+        delete(key) {
+          return store.delete(key);
         },
         close: () =>
           new Promise<void>((resolveClose, rejectClose) => {

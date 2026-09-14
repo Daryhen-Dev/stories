@@ -1,0 +1,21 @@
+---
+const manifestUrl =
+  import.meta.env.PUBLIC_STORIES_MANIFEST_URL ??
+  "http://127.0.0.1:4173/stories.json";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Stories Astro demo</title>
+    <script defer src="/stories-viewer.iife.js"></script>
+  </head>
+  <body>
+    <main>
+      <h1>Stories Astro demo</h1>
+      <stories-viewer manifest-url={manifestUrl}></stories-viewer>
+    </main>
+  </body>
+</html>

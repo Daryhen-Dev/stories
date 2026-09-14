@@ -1233,5 +1233,73 @@ rewritten or lost.
   `R3-dead-exists-check` (SUGGESTION, `bundle-size.test.mjs:33-34`),
   `R3-dist-only-exports` (SUGGESTION, `package.json:7-14`),
   `R3-stale-refresh-vacuous` (WARNING, `refresh.test.ts:138-140`).
-- The review closure itself made no commit, push, issue, PR, or merge. Subsequent
-  maintainer authorization permits those ordinary repository delivery actions.
+
+## Run 15A — embeddable photo integration slice (PR 14 → PR 15A → PR 15B)
+
+- Date: 2026-09-12 · Strict TDD: active · Status: implementation complete;
+  delivery/review authority remains with the parent.
+- Boundary: PR 15A adds only the deterministic provider, adapter, harness, plain
+  HTML, and Astro photo proof. `tasks.md` remains intentionally untouched: PR 15B
+  still owns the end-user PC-off proof and the broader framework/media matrix.
+
+### Strict-TDD evidence
+
+- RED — after adding the focused specs, the required Vitest command failed as
+  expected: simulator `OPTIONS` returned `405`, `delete` was absent, and the new
+  adapter/harness imports were unresolved. The first command also exposed the root
+  runner omission for `tools/` and `e2e/`; that discovery config was added before
+  recording the behavior-level failures.
+- Browser-smoke limitation — no independent Playwright RED was captured: the
+  plain/Astro fixture and static-server route already existed when the smoke was
+  authored, and a pre-build run would only have shown missing generated assets,
+  not a behavior-level rendering failure. The first executable browser run is
+  therefore GREEN evidence only.
+- GREEN — simulator CORS/delete, the test-only adapter, fixed-port harness, API
+  publication path, and the two static pages made the focused suite pass (14/14).
+- TRIANGULATE — a cross-origin unsatisfiable Range request preserves `416` and the
+  allowed CORS origin; the browser smoke observes the provider-served manifest
+  header `Cache-Control: public, max-age=60` during the plain HTML load.
+- REFACTOR — the harness owns and closes the provider (`4173`), loopback API
+  (`4174`), and static page (`4175`) endpoints; `closeApi()` is idempotently
+  exposed for PR 15B but no PC-off browser scenario is added or claimed here.
+
+### Delivered scope
+
+- `ProviderSimulator` now supports deterministic deletion, allowlisted loopback
+  CORS preflight/read headers for public `GET`/`HEAD`/Range responses, while
+  retaining cache, `404`, `206`, and `416` behavior.
+- `e2e/helpers/simulator-adapter.ts` is a test-only contract-shaped adapter with
+  stream/byte uploads, HEAD verification, deterministic public URLs, deletion,
+  and a public-read probe. It uses repository types and `AdapterError`, with no
+  provider SDK import.
+- The harness migrates an in-memory database, seeds a future photo plus public
+  bytes, publishes through `POST /api/projects/:id/publish`, and serves the
+  manifest directly from the provider origin—never through a same-origin proxy.
+- Plain HTML and static Astro load the built `stories-viewer.iife.js` via deferred
+  script tags and render the seeded photo. Root `pnpm e2e` builds both artifacts
+  before Playwright. Astro is pinned to exact `7.3.2` for `@stories/demo-astro`.
+
+### Validation
+
+- `pnpm exec vitest run tools/provider-simulator/index.test.ts e2e/helpers/simulator-adapter.test.ts e2e/helpers/harness.test.ts` — PASS: 3 files / 14 tests.
+- `pnpm --filter @stories/stories-embed build` — PASS.
+- `pnpm --filter @stories/demo-astro build` — PASS.
+- `pnpm e2e` — PASS: 2 Playwright photo-only tests (plain HTML, Astro).
+- `git diff --check` and the scoped Prettier check are recorded with this slice's
+  final validation run.
+
+### PR 15B remains pending
+
+- PC-off browser proof, Next/React, video playback, full navigation matrix, and
+  any end-user scope beyond the two photo renderers remain explicitly out of PR
+  15A.
+
+### Review workload
+
+- The cohesive PR 15A source/config/test surface is approximately 774 lines,
+  plus 55 lines of cumulative evidence and 1,845 generated lockfile lines. This
+  exceeds the 400-line review budget. No tests, comments, or integration paths
+  were deleted or compressed to force the number down; splitting the adapter,
+  fixed-endpoint harness, and their proofs would leave PR 15A without a complete
+  executable integration slice. Parent review authority should record a
+  `size:exception` or choose a further delivery split before commit/PR action.
