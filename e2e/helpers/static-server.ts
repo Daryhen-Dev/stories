@@ -1,8 +1,12 @@
 import { createServer, type Server } from "node:http";
 import { readFile } from "node:fs/promises";
+import { isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const STATIC_PORT = 4175;
+const NEXT_ASSETS_DIRECTORY = fileURLToPath(
+  new URL("../../apps/demo-next/out/_next/", import.meta.url),
+);
 
 const files = {
   "/plain.html": {
@@ -12,6 +16,12 @@ const files = {
   "/astro/": {
     path: fileURLToPath(
       new URL("../../apps/demo-astro/dist/index.html", import.meta.url),
+    ),
+    contentType: "text/html; charset=utf-8",
+  },
+  "/next/": {
+    path: fileURLToPath(
+      new URL("../../apps/demo-next/out/index.html", import.meta.url),
     ),
     contentType: "text/html; charset=utf-8",
   },
@@ -31,11 +41,14 @@ export interface StaticServer {
   close(): Promise<void>;
 }
 
-/** Serves only the two E2E pages and the built IIFE from a fixed browser origin. */
+/** Serves the static demos and their built assets from a fixed browser origin. */
 export function createStaticServer(): Promise<StaticServer> {
   return new Promise((resolve, reject) => {
     const server = createServer(async (request, response) => {
-      const file = files[request.url as keyof typeof files];
+      const pathname = new URL(request.url ?? "/", "http://static-server.local")
+        .pathname;
+      const file =
+        files[pathname as keyof typeof files] ?? nextAssetFile(pathname);
       if (file === undefined) {
         response.writeHead(404, { "Content-Length": 0 });
         response.end();
@@ -61,6 +74,25 @@ export function createStaticServer(): Promise<StaticServer> {
       });
     });
   });
+}
+
+function nextAssetFile(
+  pathname: string,
+): { readonly path: string; readonly contentType: string } | undefined {
+  const prefix = "/next/_next/";
+  if (!pathname.startsWith(prefix)) return undefined;
+
+  const path = resolve(NEXT_ASSETS_DIRECTORY, pathname.slice(prefix.length));
+  const relativePath = relative(NEXT_ASSETS_DIRECTORY, path);
+  if (relativePath.startsWith("..") || isAbsolute(relativePath)) {
+    return undefined;
+  }
+  return {
+    path,
+    contentType: pathname.endsWith(".css")
+      ? "text/css; charset=utf-8"
+      : "text/javascript; charset=utf-8",
+  };
 }
 
 function closeServer(server: Server): Promise<void> {
