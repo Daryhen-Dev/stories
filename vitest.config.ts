@@ -9,6 +9,8 @@ export default defineConfig({
       "packages/**/*.test.ts",
       "tests/**/*.test.ts",
       "apps/**/*.test.ts",
+      "e2e/**/*.test.ts",
+      "tools/**/*.test.ts",
     ],
   },
 });

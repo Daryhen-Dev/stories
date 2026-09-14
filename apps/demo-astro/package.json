@@ -1,0 +1,12 @@
+{
+  "name": "@stories/demo-astro",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "astro build && prettier --write --ignore-path .prettier-generated.ignore .astro/content.d.ts .astro/types.d.ts"
+  },
+  "devDependencies": {
+    "astro": "7.3.2"
+  }
+}
