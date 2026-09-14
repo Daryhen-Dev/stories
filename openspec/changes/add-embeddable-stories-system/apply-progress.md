@@ -1103,3 +1103,53 @@ rewritten or lost.
   records the decision. The broad `origin/main` diff is 592 because it includes 66
   pre-attempt task-split planning lines; that is not the native candidate accounting.
   Native review is the next gate; no delivery action is authorized.
+
+## Run 13B — PR 13B viewer element + SSR-safe registration
+
+- Scope: exactly PR 13B RED/GREEN/TRIANGULATE/REFACTOR. No attempt, branch, commit,
+  delivery, review, or non-authorized package surface was changed.
+- Safety net: `pnpm --filter @stories/stories-embed test` passed before edits (2 files,
+  6 tests).
+- RED: behavioral viewer and registration tests failed as expected: unresolved
+  `stories-viewer.js`, absent `registration.js`, and absent `register.js`.
+- GREEN: added a headless Lit `StoriesViewer`, SSR-safe explicit registration, guarded
+  browser-only `/register`, exact pinned `lit` 3.3.3 and `happy-dom` 20.14.5, plus
+  source/package exports. The initial focused checkpoint passed 6/6.
+- TRIANGULATE: the initial checkpoint proved mid-session expiry skipping, empty-model
+  safety, URL-change refetch with stale-result rejection, repeated registration
+  idempotence, server-inert imports, and browser-like `/register` side effects.
+- REFACTOR: the element remains a consumer of PR13A's loader/model; no visual or PR14
+  behavior entered the candidate. The initial focused/package checkpoints were 6/6 and
+  12/12; the current-candidate counts are recorded below after parent corrections.
+- Verification: package TypeScript check, lint, and `git diff --check` passed. Root
+  `pnpm typecheck` remains blocked by the pre-existing out-of-scope stream generic
+  error in `packages/local-api/src/routes/story-multipart.ts:322`.
+- The required offline lockfile command was attempted first but could not resolve
+  `happy-dom@20.14.5` from the local mirror; the regular lockfile-only command then
+  resolved only the authorized versions. PR13B Verify & bounds is intentionally left
+  unchecked for parent accounting and independent validation.
+- Parent correction and revalidation: the headless element now loads a URL configured
+  before connection, never fetches without a URL, invalidates disconnected work, and
+  preserves serialized successor order when the currently selected story expires.
+  Registration additionally requires both `window` and `customElements`, so a
+  server-side custom-elements polyfill stays inert. The unsupported public
+  `StoriesViewerOptions` type and unrelated `setFetcher()` method were removed rather
+  than exposing unsupported APIs.
+- Current-candidate verification: focused PR13B tests passed **10/10**; the package
+  suite passed **4 files / 16 tests**; the workspace suite passed **31 files / 202
+  tests** with **1 expected skip**; package TypeScript, lint, and `git diff --check`
+  passed. Root `pnpm typecheck` still reports the unchanged out-of-scope
+  `packages/local-api/src/routes/story-multipart.ts:322` stream-generic diagnostic.
+
+### Resolution — maintainer-authorized size exception
+
+- Native attempt #27 measured **673 / 400 logical changed lines** (**+273**). The
+  maintainer explicitly authorized preserving this cohesive candidate; native reset
+  `sha256:bd302c953a051848f9bb034f2b5aa2ca383e152bff76c975e5d15db83efe9b09`
+  records the decision.
+- Frozen candidate review `review-eb827b26e20fe87f` was approved and acknowledged.
+  Its reliability observations are informational follow-ups only; no correction or
+  re-review was offered. `.codegraph/.gitignore` remains excluded from the candidate.
+- No code, tests, comments, documentation, or behavior was removed or compressed to
+  meet the former budget. This evidence-only reconciliation does not authorize commit,
+  push, issue, PR, merge, or any PR 14 work.

@@ -321,11 +321,11 @@ behavior so each work unit can be reviewed, verified, and reverted independently
 | Depends on | PR 13A · Branch → PR 13A branch |
 | Bounds | Start: pure manifest model · Finish: headless Lit element loads/holds the model, re-checks expiry on `next()`, refetches on attribute change, and registers only in browser-like environments · Verify: `pnpm --filter @stories/stories-embed test` · Rollback: revert branch |
 
-- [ ] **RED** Write `src/stories-viewer.test.ts` and `src/registration.test.ts`: the element loads the model; `next()` re-checks expiry so a mid-session expiry drops out; `manifest-url` changes refetch; server import registers nothing; `defineStoriesViewer()` registers explicitly; `/register` side-effects only in a browser-like environment. All fail. Record evidence. <!-- sdd-owner: implementation -->
-- [ ] **GREEN** Implement `src/stories-viewer.ts`, `src/registration.ts`, and `src/register.ts`; extend `src/index.ts` with the element and registration exports. Tests pass. Record evidence. <!-- sdd-owner: implementation -->
-- [ ] **TRIANGULATE** Empty model after navigation is safe, repeated explicit registration is idempotent, and stale attribute-load results cannot replace the current attribute's model. <!-- sdd-owner: implementation -->
-- [ ] **REFACTOR** Keep the element a consumer of the PR 13A pure model; guard every registration surface so server imports stay inert. <!-- sdd-owner: implementation -->
-- [ ] **Verify & bounds** Suite green; SEV R2 navigation and R6 client-only scenarios pass; measure the active native changed-line budget and record evidence without inferring an exception. <!-- sdd-owner: implementation -->
+- [x] **RED** Write `src/stories-viewer.test.ts` and `src/registration.test.ts`: the element loads the model; `next()` re-checks expiry so a mid-session expiry drops out; `manifest-url` changes refetch; server import registers nothing; `defineStoriesViewer()` registers explicitly; `/register` side-effects only in a browser-like environment. All fail. Record evidence. <!-- sdd-owner: implementation -->
+- [x] **GREEN** Implement `src/stories-viewer.ts`, `src/registration.ts`, and `src/register.ts`; extend `src/index.ts` with the element and registration exports. Tests pass. Record evidence. <!-- sdd-owner: implementation -->
+- [x] **TRIANGULATE** Empty model after navigation is safe, repeated explicit registration is idempotent, and stale attribute-load results cannot replace the current attribute's model. <!-- sdd-owner: implementation -->
+- [x] **REFACTOR** Keep the element a consumer of the PR 13A pure model; guard every registration surface so server imports stay inert. <!-- sdd-owner: implementation -->
+- [x] **Verify & bounds** Suite green; SEV R2 navigation and R6 client-only scenarios pass; maintainer-authorized **673 / 400** native candidate ceiling; native review `review-eb827b26e20fe87f` approved and acknowledged. <!-- sdd-owner: implementation -->
 
 ### PR 14 — `@stories/stories-embed`: viewer UX + distribution builds
 
