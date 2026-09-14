@@ -735,3 +735,86 @@ removed to reduce review evidence.
   66 pre-attempt task-split planning lines; it is not the native candidate accounting.
   Selected package source/test files are included rather than omitted. Native review
   remains required, and no delivery action is authorized.
+
+## PR 13B — viewer element + SSR-safe registration (draft evidence, apply phase)
+
+- Scope: exactly PR 13B RED/GREEN/TRIANGULATE/REFACTOR. No PR 14 visual UX,
+  refresh, distribution build, demos, or server rendering behavior was added.
+- Dependencies: `lit` **3.3.3** (runtime) and `happy-dom` **20.14.5** (dev), pinned
+  exactly in `@stories/stories-embed`. `pnpm install --lockfile-only --offline`
+  was attempted first and failed because the local mirror lacked happy-dom metadata;
+  `pnpm install --lockfile-only` then updated only the lockfile resolution.
+
+### TDD cycle evidence
+
+| Phase | Command | Result |
+| --- | --- | --- |
+| Safety net | `pnpm --filter @stories/stories-embed test` | PASS — 2 files / 6 PR13A tests before PR13B edits. |
+| RED | `pnpm vitest run packages/stories-embed/src/stories-viewer.test.ts packages/stories-embed/src/registration.test.ts` | FAIL — `stories-viewer.js` import unresolved; `registration.js` and `register.js` absent (2 registration failures, one unresolved viewer suite). |
+| GREEN | same focused command | Initial PASS — 2 files / 6 tests after Lit viewer, guarded registration, `/register`, and source exports. |
+| TRIANGULATE | same focused command | Initial PASS — expiry after load is removed on `next()`; empty model is safe; attribute refetch races retain only the newest URL; explicit registration is idempotent; `/register` remains inert without a registry and registers under a browser-like registry. |
+| REFACTOR | same focused command | Initial PASS — viewer consumes only PR13A `loadManifest`/model modules; registration remains isolated and guarded. |
+| Package verification | `pnpm --filter @stories/stories-embed test` | Initial PASS — 4 files / 12 tests; current-candidate 16/16 proof is recorded below. |
+| Package typecheck | `pnpm --filter @stories/stories-embed exec tsc -p tsconfig.json --noEmit` | PASS. |
+| Lint / whitespace | `pnpm lint` · `git diff --check` | PASS — ESLint clean; no whitespace errors. |
+| Root typecheck | `pnpm typecheck` | BLOCKED outside scope — existing `packages/local-api/src/routes/story-multipart.ts:322` rejects `ReadableStream<any>` where `ReadableStream<Uint8Array>` is required. No permitted file was changed to address it. |
+
+### Scenario traceability (SEV R2 / R6; AC2 embed half)
+
+| Requirement / scenario | Test evidence |
+| --- | --- |
+| Loads current `manifest-url` with browser fetch and exposes a current story | `loads the manifest URL and exposes the current story` |
+| Re-checks expiry on navigation and safely clears an empty model | `skips stories that expire after load and safely clears an empty model on next` |
+| Attribute changes refetch and stale results lose the race | `refetches on manifest-url changes and rejects stale load results` |
+| Main index import is inert without browser registration | `keeps the main module inert even in a browser-like environment` |
+| Explicit registration is idempotent | `explicitly defines once in browser-like environments` |
+| Browser-only `/register` side effect is guarded | `register entry is inert on the server and registers in browser-like environments` |
+
+### Notes and exclusions
+
+- `StoriesViewer` is intentionally headless: its semantic status template exists only
+  to expose observable current-story behavior. No visual UI, CSS, progress, media
+  rendering, input UX, visibility refresh, Vite/IIFE output, demos, Playwright, or
+  `@lit-labs/ssr` was added.
+- The viewer uses a monotonically increasing load token and confirms the current URL
+  before replacing its model, so a stale response cannot overwrite newer state.
+- Registration has no import-time side effect from the main entry. Only `/register`
+  invokes `defineStoriesViewer()`, which guards both `window` and `customElements`
+  before checking whether `stories-viewer` is already defined.
+
+### Parent correction and current-candidate revalidation
+
+- The parent added behavioral coverage and the minimum implementation correction for
+  three lifecycle edges: a `manifest-url` set before connection loads on connection,
+  an element without a URL performs no fetch, and expiry of the current story advances
+  to the following surviving serialized story rather than wrapping to the first.
+  Disconnect invalidates pending loads. A server-side `customElements` polyfill is
+  also inert without `window`.
+- The unsupported `StoriesViewerOptions` type and unrelated `setFetcher()` method
+  were removed; consumers use the actual `StoriesViewer` custom-element API.
+- Current focused command:
+  `pnpm vitest run packages/stories-embed/src/stories-viewer.test.ts packages/stories-embed/src/registration.test.ts`
+  — PASS, **2 files / 10 tests**.
+- Current package command: `pnpm --filter @stories/stories-embed test` — PASS,
+  **4 files / 16 tests**. Workspace command: `pnpm vitest run` — PASS,
+  **31 files / 202 tests / 1 expected skip**.
+- `pnpm --filter @stories/stories-embed exec tsc -p tsconfig.json --noEmit`,
+  `pnpm lint`, and `git diff --check` all PASS. Root `pnpm typecheck` remains
+  non-green only at unchanged out-of-scope
+  `packages/local-api/src/routes/story-multipart.ts:322` (`ReadableStream<any>` versus
+  `ReadableStream<Uint8Array>`); PR13B has no diff in that file.
+
+### Resolution — maintainer-authorized size exception
+
+- Native attempt #27 measured **673 / 400 logical changed lines** (**+273**). The
+  maintainer explicitly authorized this cohesive candidate; native reset
+  `sha256:bd302c953a051848f9bb034f2b5aa2ca383e152bff76c975e5d15db83efe9b09`
+  records the decision.
+- Native reliability review `review-eb827b26e20fe87f` froze the 12-file candidate,
+  approved it, and its acknowledgement consumed the receipt. Its five findings are
+  non-blocking future follow-ups: dead fallback branch; disconnect coverage; empty-URL
+  clear coverage; load-failure coverage; and stronger stale-race proof. No correction
+  or re-review transition was offered.
+- The PR13B Verify & bounds task is checked from the current-candidate validations and
+  this authorized accounting. `.codegraph/.gitignore` remains excluded. No commit,
+  push, issue, PR, merge, or PR 14 work is authorized by this result.

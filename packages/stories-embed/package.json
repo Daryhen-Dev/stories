@@ -4,12 +4,17 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./register": "./src/register.ts"
   },
   "scripts": {
     "test": "vitest run"
   },
   "dependencies": {
-    "@stories/manifest-schema": "workspace:*"
+    "@stories/manifest-schema": "workspace:*",
+    "lit": "3.3.3"
+  },
+  "devDependencies": {
+    "happy-dom": "20.14.5"
   }
 }
