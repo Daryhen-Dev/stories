@@ -818,3 +818,65 @@ removed to reduce review evidence.
 - The PR13B Verify & bounds task is checked from the current-candidate validations and
   this authorized accounting. `.codegraph/.gitignore` remains excluded. No commit,
   push, issue, PR, merge, or PR 14 work is authorized by this result.
+
+## PR 14 — viewer UX + distribution builds (draft evidence, apply phase)
+
+- Scope: PR 14 only — interactive Lit viewer UX, 60-second visibility refresh, ESM/IIFE
+  distribution, declarations, size/SSR artifact guards, and generated-output lint hygiene.
+  PR 15 consumer demos, browser playback proof, Playwright, CORS, and PC-off stay out of
+  scope.
+- Dependency decision: `vite` **8.3.0** is an exact package devDependency; no other build
+  dependency was added. Existing exact `happy-dom` **20.14.5** remains the DOM runner.
+- Public registration contract: the main ESM entry stays inert as approved in PR 13B;
+  `/register` and the IIFE register only in browser-like environments.
+
+### TDD cycle evidence
+
+| Phase | Command | Result |
+| --- | --- | --- |
+| Safety net | `pnpm --filter @stories/stories-embed test` | PASS — 4 files / 16 tests before PR 14 edits. |
+| RED | `pnpm --filter @stories/stories-embed exec vitest run src/viewer-ux.test.ts src/refresh.test.ts` | FAIL — 6 of 7 scenarios lacked visual media, focus/navigation, progress/pause, and stale-visibility refresh behavior. |
+| GREEN | focused UX/refresh plus existing viewer/registration tests | PASS — 4 files / 17 tests after the template, lifecycle, and refresh implementation. |
+| TRIANGULATE | `pnpm --filter @stories/stories-embed exec vitest run src/viewer-ux.test.ts src/refresh.test.ts` | PASS — 7 tests: poster absence, keyboard/tap navigation, expiry, exact refresh threshold, stale race, disconnect cleanup, and document-level pointer release. |
+| REFACTOR | `pnpm --filter @stories/stories-embed build` | PASS — separate normal/forced loading paths, cleaned progress listeners, declarations, IIFE, SSR string scan, and asset/gzip assertions. |
+| Package verification | `pnpm --filter @stories/stories-embed test` | PASS — 6 files / 23 tests; 1 post-build file skipped when its explicit build environment is absent (3 skipped assertions). |
+| Workspace verification | `pnpm test` | PASS — 33 files / 209 tests / 1 expected live-profile skip. |
+| Type / lint / whitespace | package `tsc --noEmit` · `pnpm lint` · `git diff --check` | PASS. |
+| Root typecheck | `pnpm typecheck` | BLOCKED outside scope — only pre-existing `packages/local-api/src/routes/story-multipart.ts:322` TS2345 remains. |
+
+`bundle-size.test.mjs` is deliberately post-build because it reads generated `dist/`
+artifacts. It runs under `STORIES_EMBED_VERIFY_BUNDLE=1` from the package build rather than
+claiming a false pre-build artifact result.
+
+### Scenario traceability (SEV R1 / R5 / R6)
+
+| Requirement / scenario | Test evidence |
+| --- | --- |
+| Full-screen photo/video rendering and poster fallback | `renders ordered photo and video stories with a poster fallback` |
+| Tap zones, arrow keys, and host focus | `navigates through tap zones and arrow keys while keeping host focusable` |
+| Automatic progress and pointer-hold pause/resume | `automatically advances progress and pauses the timer and active video on pointer hold` |
+| Mid-session expiry disappears during UI navigation | `skips a story that expires during the visual session` plus existing PR13B navigation coverage |
+| Visibility refresh only after the manifest TTL | `refreshes the same URL only after the 60 second manifest TTL` |
+| Disconnect and stale forced-load safety | `does not keep a visibility listener after disconnect` and `rejects a stale forced refresh when the manifest URL changes` |
+| ESM entries, declarations, IIFE, gzip budget, no external assets | post-build `emits ESM entries, declarations, and a self-contained IIFE within the gzip budget` |
+| No SSR helper/path in emitted JavaScript | post-build `keeps SSR helpers out of every emitted JavaScript artifact` and Node imports of both ESM entries |
+
+### Notes and pending bounds
+
+- The IIFE is built from `register.ts`, so it carries the approved browser-only side effect;
+  the main entry does not acquire one. The emitted IIFE is reported by Vite as **31.95 kB
+  gzip**, while the post-build guard enforces a conservative **50,000-byte** maximum.
+- No `@lit-labs/ssr`, server rendering route, CSS/image/font output, or external IIFE import
+  is emitted. Styles live in the Lit component.
+- The task originally named jsdom; this slice reuses the package's existing `happy-dom`
+  runner instead of adding an unneeded second DOM dependency.
+- The root ESLint ignore changed from root-only `dist/` to `**/dist/**` because Vite's nested
+  package output is generated/ignored but otherwise linted by `eslint .`; source lint rules
+  are unchanged.
+- Native candidate accounting completed under lineage `review-38e738021570a452`: the
+  reliability reviewer required one bounded correction (`R3-refresh-ttl-boundary`),
+  then targeted validation approved it and the exact acknowledgement burned the review
+  authority. The frozen candidate measured 1,000 logical changed lines. The maintainer
+  subsequently authorized ordinary-repository delivery; PR issue #32 is approved and
+  carries `status:approved` plus `type:feature`. The PR 14 Verify & bounds checkbox is
+  now checked.

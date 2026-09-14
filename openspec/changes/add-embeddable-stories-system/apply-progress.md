@@ -1153,3 +1153,85 @@ rewritten or lost.
 - No code, tests, comments, documentation, or behavior was removed or compressed to
   meet the former budget. This evidence-only reconciliation does not authorize commit,
   push, issue, PR, merge, or any PR 14 work.
+
+## Run 14 — PR 14 `@stories/stories-embed` viewer UX + distribution builds
+
+- Scope: exactly PR 14 runtime UX, visibility refresh, client-only ESM/IIFE distribution,
+  and related package validation. PR 15 demos, Playwright, PC-off proof, panel work, and
+  server rendering remain out of scope.
+- Decisions supplied by the maintainer: exact `vite` **8.3.0** devDependency; automatic
+  viewer progression; main ESM entry remains inert, while `/register` and the IIFE retain
+  browser-only registration. The fixed progress duration is 5 seconds per story.
+- Safety net: `pnpm --filter @stories/stories-embed test` passed before PR 14 edits
+  (4 files / 16 tests).
+
+### Completed task phases
+
+- [x] RED — `src/viewer-ux.test.ts` and `src/refresh.test.ts` were added first;
+  `pnpm --filter @stories/stories-embed exec vitest run src/viewer-ux.test.ts
+  src/refresh.test.ts` failed with 6 missing-UX/refresh behaviors out of 7 scenarios.
+  `bundle-size.test.mjs` is intentionally post-build because it validates emitted files;
+  it is gated by `STORIES_EMBED_VERIFY_BUNDLE=1` rather than fabricating an in-memory
+  bundle assertion.
+- [x] GREEN — `StoriesViewer` now renders full-screen photo/video media, poster fallback,
+  progress segments, arrow/tap-zone navigation, pointer-hold pausing, expiry-aware
+  navigation, and visibility refresh. Vite emits ESM entries, declarations, and an IIFE;
+  the focused runtime/PR13B command passed 17/17.
+- [x] TRIANGULATE — coverage pins absent posters, keyboard focus, a mid-session expiry,
+  strict greater-than-60-second same-URL refresh, stale forced-refresh rejection,
+  disconnect listener cleanup, auto progression, and pointer release outside the viewer.
+- [x] REFACTOR — normal URL loads and forced visibility refreshes use separate paths;
+  progress/listener cleanup is centralized; post-build checks scan emitted JS for SSR
+  helpers and external assets. ESLint ignores nested generated `dist/` directories only.
+
+### Validation
+
+- `pnpm --filter @stories/stories-embed test` — PASS: 6 files / 23 tests, plus 1
+  post-build file skipped outside its build environment (3 skipped assertions).
+- `pnpm --filter @stories/stories-embed exec tsc -p tsconfig.json --noEmit` — PASS.
+- `pnpm --filter @stories/stories-embed build` — PASS: ESM entries, declarations, and
+  `dist/stories-viewer.iife.js`; Vite reports the IIFE at 31.95 kB gzip, and the
+  post-build suite passed 3/3 including the <= 50,000-byte gzip assertion.
+- `pnpm test` — PASS: 33 files / 209 tests / 1 expected env-gated skip.
+- `pnpm lint` and `git diff --check` — PASS.
+- Root `pnpm typecheck` remains blocked solely by the existing out-of-scope
+  `packages/local-api/src/routes/story-multipart.ts:322` stream-generic TS2345;
+  PR 14 has no diff in that file.
+
+### Delivery status
+
+- Native candidate accounting is complete; the approved review closure and bounded
+  correction are recorded below. The maintainer subsequently authorized ordinary
+  repository delivery. Issue #32 carries the required `status:approved` and
+  `type:feature` labels; `.codegraph/.gitignore` and the managed local persona asset
+  remain excluded from this PR 14 work unit.
+
+### Run 14 native review closure — bounded correction + approval
+
+- Native lineage `review-38e738021570a452` (tier medium, lens `review-reliability`)
+  froze the 12-path candidate with the 5 intended-untracked PR 14 files selected
+  (`.codegraph/.gitignore` and the sync-generated `.pi/gentle-ai/persona.json` excluded).
+  A `managed_assets_outdated` stop was resolved by running the provider-issued
+  `gentle-ai sync` command before START.
+- Reviewer outcome: `correction_required` — one CRITICAL candidate-caused finding
+  `R3-refresh-ttl-boundary`: the TTL refresh test passed only because `vi.waitFor`
+  polling advanced the fake clock by ≈50 ms; with zero drift the no-refresh leg fails,
+  and with the accidental drift the disconnect-cleanup test was vacuous.
+- Correction (single bounded, plan-gated, 24/200 lines): `packages/stories-embed/src/
+  refresh.test.ts` only (+17/−7). The manifest body's `text()` now pins the fake clock
+  to a new `LOADED_AT` constant at the instant the body resolves, so the viewer's
+  last-fetch stamp is deterministic; TTL assertions measure from `LOADED_AT` at the
+  strict boundary (+60_000 → no refetch, +60_001 → refetch) and the disconnect test
+  uses +60_001 so a leaked visibility listener would provably refetch. Evidence:
+  `refresh.test.ts` 3/3 in 4 consecutive runs; package suite 23 passed + 3 skipped;
+  package `tsc --noEmit`, `pnpm lint`, and `git diff --check` PASS.
+- The provider's targeted validation admitted the correction; state became `approved`;
+  the exact `acknowledge-approved` continuation burned authority (target `83486f9…`,
+  revision `754efb9…`, burn evidence `gentle-ai.review-acknowledged/v1`).
+- Advisory findings (non-blocking, informational follow-ups; none reopen this review):
+  `R3-asset-scan-depth` (WARNING, `bundle-size.test.mjs:27-31`),
+  `R3-dead-exists-check` (SUGGESTION, `bundle-size.test.mjs:33-34`),
+  `R3-dist-only-exports` (SUGGESTION, `package.json:7-14`),
+  `R3-stale-refresh-vacuous` (WARNING, `refresh.test.ts:138-140`).
+- The review closure itself made no commit, push, issue, PR, or merge. Subsequent
+  maintainer authorization permits those ordinary repository delivery actions.
