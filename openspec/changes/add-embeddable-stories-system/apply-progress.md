@@ -1297,9 +1297,75 @@ rewritten or lost.
 ### Review workload
 
 - The cohesive PR 15A source/config/test surface is approximately 774 lines,
-  plus 55 lines of cumulative evidence and 1,845 generated lockfile lines. This
-  exceeds the 400-line review budget. No tests, comments, or integration paths
-  were deleted or compressed to force the number down; splitting the adapter,
-  fixed-endpoint harness, and their proofs would leave PR 15A without a complete
-  executable integration slice. Parent review authority should record a
-  `size:exception` or choose a further delivery split before commit/PR action.
+      plus 55 lines of cumulative evidence and 1,845 generated lockfile lines. This
+      exceeds the 400-line review budget. No tests, comments, or integration paths
+      were deleted or compressed to force the number down; splitting the adapter,
+      fixed-endpoint harness, and their proofs would leave PR 15A without a complete
+      executable integration slice. Parent review authority should record a
+      `size:exception` or choose a further delivery split before commit/PR action.
+
+## Run 15B1 — Next static demo photo smoke (branch `sdd/pr15b1-next-demo`)
+
+- Scope: the approved B1 follow-up only — static `apps/demo-next`, exact host pins,
+  static-server/build orchestration, and one provider-origin photo smoke. PC-off,
+  video/navigation, real-fixture matrices, and all PR 15A surfaces remain B2 or
+  reviewed scope and were not changed.
+- Status: parent-authoritative `applyState: ready`, repo-local workspace, approved
+  `auto-chain` / `stacked-to-main` delivery, 400-line native cap. Parent retains
+  runtime-attempt acquire/settle authority. Action-context warnings: none. Skill
+  resolution: `paths-injected` (`gentle-ai-chained-pr`). Strict TDD: active.
+
+### Completed tasks (persisted in `tasks.md`)
+
+- [x] B1 RED/STRUCTURE — the new `/next/` Playwright photo smoke failed before the
+  demo existed: no `stories-viewer` was found after 5 seconds.
+- [x] B1 GREEN/TRIANGULATE/REFACTOR — `apps/demo-next` statically exports a
+  client-only dynamic `/register` import; the static server serves `/next/` and its
+  bounded `_next` assets; the smoke asserts a provider-origin manifest response,
+  `Cache-Control: public, max-age=60`, and provider-origin photo media. B2 rows
+  remain visibly unchecked.
+
+### TDD Cycle Evidence
+
+| Task | Test file | Layer | Safety net | RED | GREEN | TRIANGULATE | REFACTOR |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| PR 15B1 Next photo demo | `e2e/smoke.spec.ts` | Playwright E2E | `pnpm e2e`: 2/2 prior smokes | Failed: no `stories-viewer` at `/next/` | Focused Next smoke passed | Provider response TTL plus photo URL asserted | Inline client demo removed an unnecessary wrapper; focused smoke passed |
+
+### Files changed
+
+- `apps/demo-next/{app,package.json,next.config.mjs,.gitignore}` — static Next host,
+  ignored caches, exact `next@16.3.5`, `react@19.3.0`, and `react-dom@19.3.0`.
+- `e2e/{smoke.spec.ts,helpers/static-server.ts}`, `playwright.config.ts`, root
+  `package.json`, and `pnpm-lock.yaml` — Next route/assets, smoke, orchestration, and
+  lockfile-written installation.
+- `tasks.md` and this cumulative progress log — B1 checkboxes/evidence only.
+
+### Verification
+
+- RED: `pnpm exec playwright test e2e/smoke.spec.ts --grep 'Next renders'` — failed
+  because `/next/` had no viewer.
+- GREEN/focused: `pnpm --filter @stories/demo-next build` and the focused Playwright
+  smoke — passed.
+- Final: `pnpm e2e` — passed: 3 photo smokes (plain HTML, Astro, Next);
+  `pnpm test` — passed: 223 tests, 1 expected skip; `pnpm lint` and
+  `git diff --check` — passed.
+- Root `pnpm typecheck` remains blocked by the pre-existing, untouched
+  `packages/local-api/src/routes/story-multipart.ts:322` `ReadableStream<any>`
+  generic mismatch; the Next build completed its own type phase successfully.
+
+### Deviations from design
+
+- None. The existing global setup remains the fixed-origin provider/API/static-server
+  orchestrator; B1 extends its served static surface rather than replacing it.
+
+### Workload / remaining B2
+
+- Final selected candidate: **+405/−14 = 419 logical lines**, including 216
+  lockfile lines and mandatory OpenSpec evidence. It exceeds the active 400-line cap
+  by 19 lines; no code, tests, docs, or comments were removed or compressed for size.
+  A maintainer `size:exception` is required before delivery.
+- Exact persisted unchecked B2 rows:
+  - [ ] **B2 RED→GREEN (PC-off)** Add `e2e/pc-off.spec.ts`: publish via the API → **stop local-api** → load a demo → site still lists and renders published non-expired stories from the provider (simulator) alone (AC10 / MP R7 / SEV R7 PC-off scenario). Spec fails until orchestration stops the API correctly; then passes. Record evidence. <!-- sdd-owner: implementation -->
+  - [ ] **B2 TRIANGULATE** Smokes assert video playback starts and navigation reaches both stories in each framework (AC9). <!-- sdd-owner: implementation -->
+  - [ ] **B2 Verify & bounds** `pnpm e2e` green; SEV R7 + MP R6/R7 + AC9/AC10 Tier-1 proofs recorded in `verify.md`; full PR 15 diff ≤400 lines (generated lockfiles excluded from the count per one honest-slicing note if needed); record evidence. <!-- sdd-owner: implementation -->
+- No commit, push, PR, or attempt-ledger action occurred.

@@ -37,3 +37,21 @@ test("Astro renders the published photo directly from the provider manifest", as
     `${PROVIDER_URL}/stories/photo-1/media.jpg`,
   );
 });
+
+test("Next renders the published photo directly from the provider manifest", async ({
+  page,
+}) => {
+  const manifestResponse = page.waitForResponse(
+    (response) => response.url() === `${PROVIDER_URL}/stories.json`,
+  );
+  await page.goto("/next/");
+  expect((await manifestResponse).headers()["cache-control"]).toBe(
+    "public, max-age=60",
+  );
+  const viewer = page.locator("stories-viewer");
+  await expect(viewer).toBeVisible();
+  await expect(viewer.locator("img[alt='Story media']")).toHaveAttribute(
+    "src",
+    `${PROVIDER_URL}/stories/photo-1/media.jpg`,
+  );
+});
