@@ -8,6 +8,7 @@
   },
   "scripts": {
     "test": "vitest run",
+    "e2e": "pnpm --filter @stories/stories-embed build && pnpm --filter @stories/demo-astro build && playwright test",
     "typecheck": "tsc -p tsconfig.base.json",
     "lint": "eslint .",
     "format": "prettier --write .",

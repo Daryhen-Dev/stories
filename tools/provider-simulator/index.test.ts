@@ -137,5 +137,80 @@ describe("provider simulator (MSA R7 — static store with D9 cache metadata)", 
     });
     expect(unsatisfiable.status).toBe(416);
     expect(unsatisfiable.headers.get("content-range")).toBe("bytes */26");
+    const corsUnsatisfiable = await fetch(`${sim.url}/stories/s1/media.mp4`, {
+      headers: { Origin: "http://127.0.0.1:4175", Range: "bytes=99-" },
+    });
+    expect(corsUnsatisfiable.status).toBe(416);
+    expect(corsUnsatisfiable.headers.get("access-control-allow-origin")).toBe(
+      "http://127.0.0.1:4175",
+    );
+  });
+
+  it("answers CORS preflight and exposes public GET, HEAD, and ranged GET responses", async () => {
+    const sim = await start();
+    sim.put("stories/s1/photo.jpg", {
+      body: bytes("photo-bytes"),
+      contentType: "image/jpeg",
+      cacheControlSeconds: 31536000,
+    });
+
+    const preflight = await fetch(`${sim.url}/stories/s1/photo.jpg`, {
+      method: "OPTIONS",
+      headers: {
+        Origin: "http://127.0.0.1:4175",
+        "Access-Control-Request-Method": "GET",
+        "Access-Control-Request-Headers": "Range",
+      },
+    });
+    expect(preflight.status).toBe(204);
+    expect(preflight.headers.get("access-control-allow-origin")).toBe(
+      "http://127.0.0.1:4175",
+    );
+    expect(preflight.headers.get("access-control-allow-methods")).toBe(
+      "GET, HEAD, OPTIONS",
+    );
+    expect(preflight.headers.get("access-control-allow-headers")).toContain(
+      "Range",
+    );
+
+    const ranged = await fetch(`${sim.url}/stories/s1/photo.jpg`, {
+      headers: { Origin: "http://127.0.0.1:4175", Range: "bytes=0-4" },
+    });
+    const head = await fetch(`${sim.url}/stories/s1/photo.jpg`, {
+      method: "HEAD",
+      headers: { Origin: "http://127.0.0.1:4175" },
+    });
+    expect(ranged.status).toBe(206);
+    expect(ranged.headers.get("access-control-allow-origin")).toBe(
+      "http://127.0.0.1:4175",
+    );
+    expect(ranged.headers.get("access-control-expose-headers")).toContain(
+      "Content-Range",
+    );
+    expect(head.status).toBe(200);
+    expect(head.headers.get("access-control-allow-origin")).toBe(
+      "http://127.0.0.1:4175",
+    );
+  });
+
+  it("deletes stored keys deterministically without changing unrelated objects", async () => {
+    const sim = await start();
+    sim.put("stories/remove.jpg", {
+      body: bytes("remove"),
+      contentType: "image/jpeg",
+      cacheControlSeconds: 31536000,
+    });
+    sim.put("stories/keep.jpg", {
+      body: bytes("keep"),
+      contentType: "image/jpeg",
+      cacheControlSeconds: 31536000,
+    });
+
+    expect(sim.delete("stories/remove.jpg")).toBe(true);
+    expect(sim.delete("stories/remove.jpg")).toBe(false);
+    expect((await fetch(`${sim.url}/stories/remove.jpg`)).status).toBe(404);
+    expect(await (await fetch(`${sim.url}/stories/keep.jpg`)).text()).toBe(
+      "keep",
+    );
   });
 });
